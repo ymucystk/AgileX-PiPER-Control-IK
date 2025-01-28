@@ -41,6 +41,12 @@ export default function Home() {
   const [p15_pos,set_p15_pos] = React.useState({x:0,y:0,z:0})
   const [p16_pos,set_p16_pos] = React.useState({x:0,y:0,z:0})
 
+  const [controller_object,set_controller_object] = React.useState(new THREE.Object3D())
+  const [trigger_on,set_trigger_on] = React.useState(false)
+  const [start_pos,set_start_pos] = React.useState(new THREE.Vector4())
+  const [save_target,set_save_target] = React.useState()
+  const [vr_mode,set_vr_mode] = React.useState(false)
+
   const [test_pos,set_test_pos] = React.useState({x:0,y:0,z:0})
 
   const [c_pos_x,set_c_pos_x] = React.useState(0)
@@ -64,6 +70,7 @@ export default function Home() {
   const [x_vec_base,set_x_vec_base] = React.useState()
   const [y_vec_base,set_y_vec_base] = React.useState()
   const [z_vec_base,set_z_vec_base] = React.useState()
+  const order = 'ZYX'
 
   const joint_pos = {
     base:{x:0,y:0,z:0},
@@ -86,6 +93,45 @@ export default function Home() {
     }, 10);
     return function(){clearInterval(intervalId)};
   }, [now]);
+
+  React.useEffect(() => {
+    if(rendered && vr_mode && trigger_on){
+      const move_pos = pos_sub(start_pos,controller_object.position)
+      move_pos.x = move_pos.x/2
+      move_pos.y = move_pos.y/2
+      move_pos.z = move_pos.z/2
+      let target_pos
+      if(save_target === undefined){
+        set_save_target(target)
+        target_pos = pos_sub(target,move_pos)
+      }else{
+        target_pos = pos_sub(save_target,move_pos)
+      }
+      if(target_pos.y>=0.012){
+        set_target(getpos(target_pos))
+      }
+    }
+  },[controller_object.position.x,controller_object.position.y,controller_object.position.z])
+
+  React.useEffect(() => {
+    if(rendered && vr_mode && !trigger_on){
+      const wk_mtx = new THREE.Matrix4().makeRotationFromEuler(controller_object.rotation)
+      .multiply(
+        new THREE.Matrix4().makeRotationFromEuler(
+          new THREE.Euler(
+            (0.6654549523360951*-1),  //x
+            toRadian(180),  //y
+            toRadian(180),  //z
+            controller_object.rotation.order
+          )
+        )
+      )
+      const wk_euler = new THREE.Euler().setFromRotationMatrix(wk_mtx,controller_object.rotation.order)
+      set_wrist_rot_x(round(toAngle(wk_euler.x)))
+      set_wrist_rot_y(round(toAngle(wk_euler.y)))
+      set_wrist_rot_z(round(toAngle(wk_euler.z)))
+    }
+  },[controller_object.rotation.x,controller_object.rotation.y,controller_object.rotation.z])
 
   React.useEffect(() => {
     if(rendered){
@@ -141,12 +187,8 @@ export default function Home() {
   }, [j6_rotate])
 
   const get_j5_quaternion = (rot_x=wrist_rot_x,rot_y=wrist_rot_y,rot_z=wrist_rot_z)=>{
-    return new THREE.Quaternion().multiply(
-      new THREE.Quaternion().setFromAxisAngle(z_vec_base,toRadian(rot_z))
-    ).multiply(
-      new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(rot_y))
-    ).multiply(
-      new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(rot_x))
+    return new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(toRadian(rot_x), toRadian(rot_y), toRadian(rot_z), order)
     )
   }
 
@@ -309,12 +351,14 @@ export default function Home() {
       shift_target.z = shift_target.z + sabun_pos.z
     }
 
-    set_j1_rotate(result_rotate.j1_rotate)
-    set_j2_rotate(result_rotate.j2_rotate)
-    set_j3_rotate(result_rotate.j3_rotate)
-    set_j4_rotate(result_rotate.j4_rotate)
-    set_j5_rotate(result_rotate.j5_rotate)
-    set_j6_rotate(normalize180(round(result_rotate.j6_rotate + tool_rotate)))
+    if(dsp_message === ""){
+      set_j1_rotate(result_rotate.j1_rotate)
+      set_j2_rotate(result_rotate.j2_rotate)
+      set_j3_rotate(result_rotate.j3_rotate)
+      set_j4_rotate(result_rotate.j4_rotate)
+      set_j5_rotate(result_rotate.j5_rotate)
+      set_j6_rotate(normalize180(round(result_rotate.j6_rotate + tool_rotate)))
+    }
     set_dsp_message(dsp_message)
   }
 
@@ -366,7 +410,7 @@ export default function Home() {
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
-    const wk_j5_rotate = normalize180(round(180 - result_angle1.angle_C - 90))
+    let wk_j5_rotate = normalize180(round(180 - result_angle1.angle_C - 90))
 
     const result_p16_zero_offset = calc_side_1(p15_16_len,normalize180(round(180 - result_angle1.angle_C)))
     const p16_zero_offset_pos = quaternionToRotation(baseq,{x:0,y:result_p16_zero_offset.a,z:result_p16_zero_offset.b})
@@ -389,6 +433,15 @@ export default function Home() {
     const j5q = get_j5_quaternion()
     const p14_j5_diff = quaternionToAngle(quaternionDifference(baseq,j5q))
     const wk_j6_rotate = p14_j5_diff.angle * ((p14_j5_diff.axis.z < 0)?-1:1)
+
+    if(wk_j5_rotate<-165){
+      wk_j5_rotate = -165
+      dsp_message = "j5_rotate 可動範囲外！"
+    }else
+    if(wk_j5_rotate>0){
+      wk_j5_rotate = 0
+      dsp_message = "j5_rotate 可動範囲外！"
+    }
 
     return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
       j4_rotate:wk_j4_rotate,j5_rotate:wk_j5_rotate,j6_rotate:wk_j6_rotate,dsp_message}
@@ -431,6 +484,22 @@ export default function Home() {
       }else{
         wk_j3_rotate = angle_j3
       }
+    }
+    if(wk_j2_rotate<-85){
+      wk_j2_rotate = -85
+      dsp_message = "j2_rotate 指定可能範囲外！"
+    }else
+    if(wk_j2_rotate>105){
+      wk_j2_rotate = 105
+      dsp_message = "j2_rotate 指定可能範囲外！"
+    }
+    if(wk_j3_rotate<-10){
+      wk_j3_rotate = -10
+      dsp_message = "j3_rotate 指定可能範囲外！"
+    }else
+    if(wk_j3_rotate>170){
+      wk_j3_rotate = 170
+      dsp_message = "j3_rotate 指定可能範囲外！"
     }
     return {j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,dsp_message}
   }
@@ -595,6 +664,36 @@ export default function Home() {
             }
           }
         });
+        AFRAME.registerComponent('vr-controller-right', {
+          schema: {type: 'string', default: ''},
+          init: function () {
+            set_controller_object(this.el.object3D)
+            this.el.object3D.rotation.order = order
+            this.el.addEventListener('triggerdown', (evt)=>{
+              const wk_start_pos = new THREE.Vector4(0,0,0,1).applyMatrix4(this.el.object3D.matrix)
+              set_start_pos(wk_start_pos)
+              set_trigger_on(true)
+            });
+            this.el.addEventListener('triggerup', (evt)=>{
+              set_save_target(undefined)
+              set_trigger_on(false)
+            });
+          }
+        });
+        AFRAME.registerComponent('scene', {
+          schema: {type: 'string', default: ''},
+          init: function () {
+            this.el.addEventListener('enter-vr', ()=>{
+              set_vr_mode(true)
+              console.log('enter-vr')
+              set_target({x:target.x,y:target.y,z:target.z*-1})
+            });
+            this.el.addEventListener('exit-vr', ()=>{
+              set_vr_mode(false)
+              console.log('exit-vr')
+            });
+          }
+        });
       }
     }
   }, [typeof window])
@@ -621,7 +720,8 @@ export default function Home() {
   if(rendered){
     return (
     <>
-      <a-scene>
+      <a-scene scene>
+        <a-entity oculus-touch-controls="hand: right" vr-controller-right visible={false}></a-entity>
         <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" color="#7BC8A4"></a-plane>
         <Assets/>
         <Select_Robot {...robotProps}/>
