@@ -434,14 +434,6 @@ export default function Home() {
       dsp_message = "j1_rotate 指定可能範囲外！"
     }
 
-    const baseq = new THREE.Quaternion().multiply(
-      new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j1_rotate))
-    ).multiply(
-      new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j2_rotate))
-    ).multiply(
-      new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j3_rotate))
-    )
-
     const base_m4 = new THREE.Matrix4().multiply(
       new THREE.Matrix4().makeRotationY(toRadian(wk_j1_rotate)).setPosition(joint_pos.j1.x,joint_pos.j1.y,joint_pos.j1.z)
     ).multiply(
@@ -458,10 +450,10 @@ export default function Home() {
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
-    const j5_base = 180 - result_angle1.angle_C - 90
+    const j5_base = (180 - result_angle1.angle_C) - 90
     let wk_j5_rotate = normalize180(round(j5_base))
     let j5_minus = false
-    if(round(wk_j2_rotate+wk_j3_rotate)>=round(wrist_angle)){
+    if(round((wk_j2_rotate+wk_j3_rotate),4)>=round(wrist_angle,4)){
       wk_j5_rotate = normalize180(round(j5_base-((j5_base+90)*2)))
       j5_minus = true
     }
@@ -475,12 +467,22 @@ export default function Home() {
     }
 
     const result_p16_zero_offset = calc_side_1(p15_16_len,normalize180((180 - result_angle1.angle_C)*(j5_minus?-1:1)))
-    const p16_zero_offset_pos = quaternionToRotation(baseq,{x:0,y:result_p16_zero_offset.a,z:result_p16_zero_offset.b})
-    const p16_zero_pos = pos_add(p15_pos,p16_zero_offset_pos)
-    console.log(`p16_zero_pos:{x:${p16_zero_pos.x}, y:${p16_zero_pos.y}, z:${p16_zero_pos.z}}`)
 
-    const distance_16_16 = Math.min(round(distance(p16_zero_pos,p16_pos)),result_p16_zero_offset.b*2)
-    const result_angle2 = degree3(result_p16_zero_offset.b,result_p16_zero_offset.b,distance_16_16)
+    const wk_m4 = new THREE.Matrix4().multiply(
+      new THREE.Matrix4().makeRotationY(toRadian(wk_j1_rotate))
+    ).multiply(
+      new THREE.Matrix4().makeRotationX(toRadian(wk_j2_rotate))
+    ).multiply(
+      new THREE.Matrix4().makeRotationX(toRadian(wk_j3_rotate))
+    ).multiply(
+      new THREE.Matrix4().setPosition(0,result_p16_zero_offset.a,result_p16_zero_offset.b)
+    )
+    const p16_zero_offset_pos = new THREE.Vector3().applyMatrix4(wk_m4)
+    const p16_zero_pos = pos_add(p15_pos,p16_zero_offset_pos)
+
+    const p16_radius = Math.abs(result_p16_zero_offset.b)
+    const distance_16_16 = Math.min(distance(p16_zero_pos,p16_pos),round(p16_radius*2))
+    const result_angle2 = degree3(p16_radius,p16_radius,distance_16_16)
     if(isNaN(result_angle2.angle_C)){
       dsp_message = "result_angle2.angle_C 指定可能範囲外！"
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
@@ -488,22 +490,21 @@ export default function Home() {
     }
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
     const j4_base = result_angle2.angle_C * (direction_offset<0?-1:1)
-    let wk_j4_rotate = normalize180(round(j4_base))
-    console.log(`wk_j4_rotate:${wk_j4_rotate}`)
+    let wk_j4_rotate = normalize180(round(j4_base))*(j5_minus?-1:1)
     if(wk_j4_rotate<-90){
       wk_j4_rotate = normalize180(round(j4_base-(j4_base+90)*2))
-      console.log(`test1:${wk_j4_rotate}`)
-      //wk_j4_rotate = -90
-      //dsp_message = "j4_rotate 指定可能範囲外！"
     }else
     if(wk_j4_rotate>90){
       wk_j4_rotate = normalize180(round(j4_base-(j4_base-90)*2))
-      console.log(`test2:${wk_j4_rotate}`)
-      //wk_j4_rotate = 90
-      //dsp_message = "j4_rotate 指定可能範囲外！"
     }
 
-    baseq.multiply(
+    const baseq = new THREE.Quaternion().multiply(
+      new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j1_rotate))
+    ).multiply(
+      new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j2_rotate))
+    ).multiply(
+      new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j3_rotate))
+    ).multiply(
       new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j4_rotate))
     ).multiply(
       new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j5_rotate))
