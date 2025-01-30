@@ -58,7 +58,7 @@ export default function Home() {
   const [c_deg_y,set_c_deg_y] = React.useState(0)
   const [c_deg_z,set_c_deg_z] = React.useState(0)
 
-  const [wrist_rot_x,set_wrist_rot_x] = React.useState(0)
+  const [wrist_rot_x,set_wrist_rot_x] = React.useState(180)
   const [wrist_rot_y,set_wrist_rot_y] = React.useState(0)
   const [wrist_rot_z,set_wrist_rot_z] = React.useState(0)
   const [tool_rotate,set_tool_rotate] = React.useState(0)
@@ -85,7 +85,7 @@ export default function Home() {
     j7:{x:0,y:0,z:0.225},
   }
 
-  const [target,set_target] = React.useState({x:0.05,y:0.43,z:0.26})
+  const [target,set_target] = React.useState({x:0.05,y:0.43,z:-0.26})
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
  
@@ -95,12 +95,6 @@ export default function Home() {
     }, 10);
     return function(){clearInterval(intervalId)};
   }, [now]);
-
-  React.useEffect(() => {
-    if(vr_mode){
-      set_target({x:target.x,y:target.y,z:target.z*-1})
-    }
-  },[vr_mode])
 
   React.useEffect(() => {
     if(rendered && vr_mode && trigger_on){
@@ -762,7 +756,6 @@ export default function Home() {
             this.el.addEventListener('enter-vr', ()=>{
               set_vr_mode(true)
               console.log('enter-vr')
-              //set_target({x:target.x,y:target.y,z:target.z*-1})
             });
             this.el.addEventListener('exit-vr', ()=>{
               set_vr_mode(false)
