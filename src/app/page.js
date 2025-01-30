@@ -18,7 +18,9 @@ export default function Home() {
   const [j4_rotate,set_j4_rotate] = React.useState(0)
   const [j5_rotate,set_j5_rotate] = React.useState(0)
   const [j6_rotate,set_j6_rotate] = React.useState(0)
-  const [j7_rotate,set_j7_rotate] = React.useState(0) //指用
+  const [j7_rotate,set_j7_rotate] = React.useState(24) //指用
+
+  const [rotate, set_rotate] = React.useState([0,0,0,0,0,0,0])
 
   const [j1_object,set_j1_object] = React.useState()
   const [j2_object,set_j2_object] = React.useState()
@@ -83,7 +85,7 @@ export default function Home() {
     j7:{x:0,y:0,z:0.225},
   }
 
-  const [target,set_target] = React.useState({x:0.1,y:0.4,z:0.25})
+  const [target,set_target] = React.useState({x:0.05,y:0.45,z:0.3})
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
  
@@ -153,38 +155,69 @@ export default function Home() {
   React.useEffect(() => {
     if (j1_object !== undefined) {
       j1_object.quaternion.setFromAxisAngle(y_vec_base,toRadian(j1_rotate))
+      set_rotate((org)=>{
+        org[0] = round(j1_rotate,3)
+        return org
+      })
     }
   }, [j1_rotate])
 
   React.useEffect(() => {
     if (j2_object !== undefined) {
       j2_object.quaternion.setFromAxisAngle(x_vec_base,toRadian(j2_rotate))
+      set_rotate((org)=>{
+        org[1] = round(j2_rotate+80,3)
+        return org
+      })
     }
   }, [j2_rotate])
 
   React.useEffect(() => {
     if (j3_object !== undefined) {
       j3_object.quaternion.setFromAxisAngle(x_vec_base,toRadian(j3_rotate))
+      set_rotate((org)=>{
+        org[2] = round((j3_rotate-5)*-1,3)
+        return org
+      })
     }
   }, [j3_rotate])
 
   React.useEffect(() => {
     if (j4_object !== undefined) {
       j4_object.quaternion.setFromAxisAngle(y_vec_base,toRadian(j4_rotate))
+      set_rotate((org)=>{
+        org[3] = round(j4_rotate,3)
+        return org
+      })
     }
   }, [j4_rotate])
 
   React.useEffect(() => {
     if (j5_object !== undefined) {
       j5_object.quaternion.setFromAxisAngle(x_vec_base,toRadian(j5_rotate))
+      set_rotate((org)=>{
+        org[4] = round(j5_rotate+90,3)
+        return org
+      })
     }
   }, [j5_rotate])
 
   React.useEffect(() => {
     if (j6_object !== undefined) {
       j6_object.quaternion.setFromAxisAngle(z_vec_base,toRadian(j6_rotate))
+      set_rotate((org)=>{
+        org[5] = round(j6_rotate,3)
+        return org
+      })
     }
   }, [j6_rotate])
+
+  React.useEffect(() => {
+    set_rotate((org)=>{
+      org[6] = round(j7_rotate,3)
+      return org
+    })
+  }, [j7_rotate])
 
   const get_j5_quaternion = (rot_x=wrist_rot_x,rot_y=wrist_rot_y,rot_z=wrist_rot_z)=>{
     return new THREE.Quaternion().setFromEuler(
@@ -392,6 +425,14 @@ export default function Home() {
       dsp_message = "wk_j1_rotate 指定可能範囲外！"
       return {j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
+    if(wk_j1_rotate>145){
+      wk_j1_rotate = 145
+      dsp_message = "j1_rotate 指定可能範囲外！"
+    }else
+    if(wk_j1_rotate<-145){
+      wk_j1_rotate = -145
+      dsp_message = "j1_rotate 指定可能範囲外！"
+    }
 
     const baseq = new THREE.Quaternion().multiply(
       new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j1_rotate))
@@ -400,8 +441,15 @@ export default function Home() {
     ).multiply(
       new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j3_rotate))
     )
-    const p14_offset_pos = quaternionToRotation(baseq,{x:0,y:joint_pos.j4.y,z:0})
-    const p13_pos = pos_sub(p15_pos,p14_offset_pos)
+
+    const base_m4 = new THREE.Matrix4().multiply(
+      new THREE.Matrix4().makeRotationY(toRadian(wk_j1_rotate)).setPosition(joint_pos.j1.x,joint_pos.j1.y,joint_pos.j1.z)
+    ).multiply(
+      new THREE.Matrix4().makeRotationX(toRadian(wk_j2_rotate)).setPosition(joint_pos.j2.x,joint_pos.j2.y,joint_pos.j2.z)
+    ).multiply(
+      new THREE.Matrix4().makeRotationX(toRadian(wk_j3_rotate)).setPosition(joint_pos.j3.x,joint_pos.j3.y,joint_pos.j3.z)
+    )
+    const p13_pos = new THREE.Vector3().applyMatrix4(base_m4)
 
     const distance_13_16 = round(distance(p13_pos,p16_pos))
     const result_angle1 = degree3(joint_pos.j4.y,p15_16_len,distance_13_16)
@@ -410,11 +458,27 @@ export default function Home() {
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
-    let wk_j5_rotate = normalize180(round(180 - result_angle1.angle_C - 90))
+    const j5_base = 180 - result_angle1.angle_C - 90
+    let wk_j5_rotate = normalize180(round(j5_base))
+    let j5_minus = false
+    if(round(wk_j2_rotate+wk_j3_rotate)>=round(wrist_angle)){
+      wk_j5_rotate = normalize180(round(j5_base-((j5_base+90)*2)))
+      j5_minus = true
+    }
+    if(wk_j5_rotate<-160){
+      wk_j5_rotate = -160
+      dsp_message = "j5_rotate 可動範囲外！"
+    }else
+    if(wk_j5_rotate>-20){
+      wk_j5_rotate = -20
+      dsp_message = "j5_rotate 可動範囲外！"
+    }
 
-    const result_p16_zero_offset = calc_side_1(p15_16_len,normalize180(round(180 - result_angle1.angle_C)))
+    const result_p16_zero_offset = calc_side_1(p15_16_len,normalize180((180 - result_angle1.angle_C)*(j5_minus?-1:1)))
     const p16_zero_offset_pos = quaternionToRotation(baseq,{x:0,y:result_p16_zero_offset.a,z:result_p16_zero_offset.b})
     const p16_zero_pos = pos_add(p15_pos,p16_zero_offset_pos)
+    console.log(`p16_zero_pos:{x:${p16_zero_pos.x}, y:${p16_zero_pos.y}, z:${p16_zero_pos.z}}`)
+
     const distance_16_16 = Math.min(round(distance(p16_zero_pos,p16_pos)),result_p16_zero_offset.b*2)
     const result_angle2 = degree3(result_p16_zero_offset.b,result_p16_zero_offset.b,distance_16_16)
     if(isNaN(result_angle2.angle_C)){
@@ -423,7 +487,21 @@ export default function Home() {
         j4_rotate,j5_rotate:wk_j5_rotate,j6_rotate,dsp_message}
     }
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
-    const wk_j4_rotate = normalize180(round(result_angle2.angle_C * (direction_offset<0?-1:1)))
+    const j4_base = result_angle2.angle_C * (direction_offset<0?-1:1)
+    let wk_j4_rotate = normalize180(round(j4_base))
+    console.log(`wk_j4_rotate:${wk_j4_rotate}`)
+    if(wk_j4_rotate<-90){
+      wk_j4_rotate = normalize180(round(j4_base-(j4_base+90)*2))
+      console.log(`test1:${wk_j4_rotate}`)
+      //wk_j4_rotate = -90
+      //dsp_message = "j4_rotate 指定可能範囲外！"
+    }else
+    if(wk_j4_rotate>90){
+      wk_j4_rotate = normalize180(round(j4_base-(j4_base-90)*2))
+      console.log(`test2:${wk_j4_rotate}`)
+      //wk_j4_rotate = 90
+      //dsp_message = "j4_rotate 指定可能範囲外！"
+    }
 
     baseq.multiply(
       new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j4_rotate))
@@ -433,15 +511,6 @@ export default function Home() {
     const j5q = get_j5_quaternion()
     const p14_j5_diff = quaternionToAngle(quaternionDifference(baseq,j5q))
     const wk_j6_rotate = p14_j5_diff.angle * ((p14_j5_diff.axis.z < 0)?-1:1)
-
-    if(wk_j5_rotate<-165){
-      wk_j5_rotate = -165
-      dsp_message = "j5_rotate 可動範囲外！"
-    }else
-    if(wk_j5_rotate>0){
-      wk_j5_rotate = 0
-      dsp_message = "j5_rotate 可動範囲外！"
-    }
 
     return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
       j4_rotate:wk_j4_rotate,j5_rotate:wk_j5_rotate,j6_rotate:wk_j6_rotate,dsp_message}
@@ -485,16 +554,16 @@ export default function Home() {
         wk_j3_rotate = angle_j3
       }
     }
-    if(wk_j2_rotate<-85){
-      wk_j2_rotate = -85
+    if(wk_j2_rotate<-80){
+      wk_j2_rotate = -80
       dsp_message = "j2_rotate 指定可能範囲外！"
     }else
-    if(wk_j2_rotate>105){
-      wk_j2_rotate = 105
+    if(wk_j2_rotate>100){
+      wk_j2_rotate = 100
       dsp_message = "j2_rotate 指定可能範囲外！"
     }
-    if(wk_j3_rotate<-10){
-      wk_j3_rotate = -10
+    if(wk_j3_rotate<5){
+      wk_j3_rotate = 5
       dsp_message = "j3_rotate 指定可能範囲外！"
     }else
     if(wk_j3_rotate>170){
@@ -686,7 +755,7 @@ export default function Home() {
             this.el.addEventListener('enter-vr', ()=>{
               set_vr_mode(true)
               console.log('enter-vr')
-              set_target({x:target.x,y:target.y,z:target.z*-1})
+              //set_target({x:target.x,y:target.y,z:target.z*-1})
             });
             this.el.addEventListener('exit-vr', ()=>{
               set_vr_mode(false)
@@ -747,7 +816,7 @@ export default function Home() {
       </a-scene>
       <Controller {...controllerProps}/>
       <div className="footer" >
-        <div>{`wrist_degree:{direction:${wrist_degree.direction},angle:${wrist_degree.angle}}  ${dsp_message}`}</div>
+        <div>{`wrist_degree:{direction:${wrist_degree.direction},angle:${wrist_degree.angle}}  ${dsp_message}  outdeg[${rotate[0]}, ${rotate[1]}, ${rotate[2]}, ${rotate[3]}, ${rotate[4]}, ${rotate[5]}, ${rotate[6]}]`}</div>
       </div>
     </>
     );
@@ -807,10 +876,14 @@ const Model = (props)=>{
 const Model_Tool = (props)=>{
   const Toolpos = {x:0,y:0,z:0}
   const {j7_rotate, joint_pos:{j7:j7pos}, cursor_vis, box_vis, edit_pos} = props
+  const x = 36/90
+  const finger_pos = ((j7_rotate*x) / 1000)+0.0004
+  const j6_1_pos = { x: finger_pos, y:0, z:0.226 }
+  const j6_2_pos = { x: -finger_pos, y:0, z:0.226 }
   const return_table = [
     <>
-      <a-entity gltf-model="#j6_1" position="0.01 0 0.226"></a-entity>
-      <a-entity gltf-model="#j6_2" position="-0.01 0 0.226"></a-entity>
+      <a-entity gltf-model="#j6_1" position={edit_pos(j6_1_pos)}></a-entity>
+      <a-entity gltf-model="#j6_2" position={edit_pos(j6_2_pos)}></a-entity>
       <Cursor3dp j_id="16" pos={j7pos} visible={cursor_vis}/>
       <a-box color="yellow" scale="0.02 0.02 0.02" position={edit_pos(j7pos)} visible={box_vis}></a-box>
     </>,
