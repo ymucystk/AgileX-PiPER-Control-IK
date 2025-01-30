@@ -97,6 +97,12 @@ export default function Home() {
   }, [now]);
 
   React.useEffect(() => {
+    if(vr_mode){
+      set_target({x:target.x,y:target.y,z:target.z*-1})
+    }
+  },[vr_mode])
+
+  React.useEffect(() => {
     if(rendered && vr_mode && trigger_on){
       const move_pos = pos_sub(start_pos,controller_object.position)
       move_pos.x = move_pos.x/2
@@ -756,7 +762,7 @@ export default function Home() {
             this.el.addEventListener('enter-vr', ()=>{
               set_vr_mode(true)
               console.log('enter-vr')
-              set_target({x:target.x,y:target.y,z:target.z*-1})
+              //set_target({x:target.x,y:target.y,z:target.z*-1})
             });
             this.el.addEventListener('exit-vr', ()=>{
               set_vr_mode(false)
