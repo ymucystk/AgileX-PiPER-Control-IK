@@ -85,7 +85,7 @@ export default function Home() {
     j7:{x:0,y:0,z:0.225},
   }
 
-  const [target,set_target] = React.useState({x:0.05,y:0.45,z:0.3})
+  const [target,set_target] = React.useState({x:0.05,y:0.43,z:0.26})
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
  
@@ -756,7 +756,7 @@ export default function Home() {
             this.el.addEventListener('enter-vr', ()=>{
               set_vr_mode(true)
               console.log('enter-vr')
-              //set_target({x:target.x,y:target.y,z:target.z*-1})
+              set_target({x:target.x,y:target.y,z:target.z*-1})
             });
             this.el.addEventListener('exit-vr', ()=>{
               set_vr_mode(false)
