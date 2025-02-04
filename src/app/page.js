@@ -158,7 +158,7 @@ export default function Home() {
     if (j1_object !== undefined) {
       j1_object.quaternion.setFromAxisAngle(y_vec_base,toRadian(j1_rotate))
       set_rotate((org)=>{
-        org[0] = round(j1_rotate,3)
+        org[0] = round(normalize180(j1_rotate+(vr_mode?180:0)),3)
         return org
       })
     }
@@ -223,7 +223,7 @@ export default function Home() {
 
   React.useEffect(() => {
     if (j1_object !== undefined) {
-      const rotate_value = input_rotate[0]
+      const rotate_value = normalize180(input_rotate[0]-(vr_mode?180:0))
       set_j1_rotate(rotate_value)
     }
   }, [input_rotate[0]])
@@ -436,8 +436,14 @@ export default function Home() {
     }
 
     if(dsp_message === ""){
-      if(result_rotate.j1_rotate<-145 || result_rotate.j1_rotate>145){
-        dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
+      if(vr_mode){
+        if(result_rotate.j1_rotate<35 && result_rotate.j1_rotate>-35){
+          dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
+        }
+      }else{
+        if(result_rotate.j1_rotate<-145 || result_rotate.j1_rotate>145){
+          dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
+        }
       }
       if(result_rotate.j2_rotate<-80 || result_rotate.j2_rotate>100){
         dsp_message = `j2_rotate 指定可能範囲外！:(${result_rotate.j2_rotate})`
