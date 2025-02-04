@@ -109,9 +109,10 @@ export default function Home() {
       }else{
         target_pos = pos_sub(save_target,move_pos)
       }
-      if(target_pos.y>=0.012){
-        set_target((target_pos))
+      if(target_pos.y < 0.012){
+        target_pos.y = 0.012
       }
+      set_target((target_pos))
     }
   },[controller_object.position.x,controller_object.position.y,controller_object.position.z])
 
@@ -386,19 +387,19 @@ export default function Home() {
 
     if(dsp_message === ""){
       if(result_rotate.j1_rotate<-145 || result_rotate.j1_rotate>145){
-        //dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
+        dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
       }
       if(result_rotate.j2_rotate<-80 || result_rotate.j2_rotate>100){
-        //dsp_message = `j2_rotate 指定可能範囲外！:(${result_rotate.j2_rotate})`
+        dsp_message = `j2_rotate 指定可能範囲外！:(${result_rotate.j2_rotate})`
       }
       if(result_rotate.j3_rotate<5 || result_rotate.j3_rotate>170){
-        //dsp_message = `j3_rotate 指定可能範囲外！:(${result_rotate.j3_rotate})`
+        dsp_message = `j3_rotate 指定可能範囲外！:(${result_rotate.j3_rotate})`
       }
       if(result_rotate.j4_rotate<-90 || result_rotate.j4_rotate>90){
-        //dsp_message = `j4_rotate 指定可能範囲外！:(${result_rotate.j4_rotate})`
+        dsp_message = `j4_rotate 指定可能範囲外！:(${result_rotate.j4_rotate})`
       }
       if(result_rotate.j5_rotate<-160 || result_rotate.j5_rotate>-20){
-        //dsp_message = `j5_rotate 指定可能範囲外！:(${result_rotate.j5_rotate})`
+        dsp_message = `j5_rotate 指定可能範囲外！:(${result_rotate.j5_rotate})`
       }
     }
 
@@ -416,20 +417,29 @@ export default function Home() {
   }
 
   const get_all_rotate = (final_target,wrist_direction,wrist_angle)=>{
-    console.log(`get_all_rotate`)
     let dsp_message = ""
     const p16_pos = new THREE.Vector3(final_target.x,final_target.y,final_target.z)
     const p15_16_offset_pos = get_p21_pos()
-    const p15_pos = pos_sub(p16_pos,p15_16_offset_pos)
+    const p15_pos_wk = pos_sub(p16_pos,p15_16_offset_pos)
+    const p15_pos = new THREE.Vector3(p15_pos_wk.x,p15_pos_wk.y,p15_pos_wk.z)
 
     let back = false
     if(round(p15_pos.x) !== round(p16_pos.x) || round(p15_pos.z) !== round(p16_pos.z)){
-      const wk_sideA = distance({x:0,y:0,z:0},{x:p15_pos.x,y:0,z:p15_pos.z})
-      const wk_sideB = distance({x:0,y:0,z:0},{x:p16_pos.x,y:0,z:p16_pos.z})
-      const wk_sideC = distance({x:p15_pos.x,y:0,z:p15_pos.z},{x:p16_pos.x,y:0,z:p16_pos.z})
-      const wk_angleC = degree3(wk_sideA,wk_sideB,wk_sideC).angle_C
+      let wk_angleC = toAngle(
+        new THREE.Vector3(p15_pos.x,0,p15_pos.z).sub(new THREE.Vector3()).angleTo(
+          new THREE.Vector3(p16_pos.x,0,p16_pos.z).sub(new THREE.Vector3())))
+      if(isNaN(wk_angleC)){
+        wk_angleC = 0
+      }
+      wk_angleC = round(wk_angleC)
       if(wk_angleC > 90){
         back = true
+      }else{
+        const distance_p15 = distance({x:0,y:0,z:0},{x:p15_pos.x,y:0,z:p15_pos.z})
+        const distance_p16 = distance({x:0,y:0,z:0},{x:p16_pos.x,y:0,z:p16_pos.z})
+        if(distance_p15 > distance_p16){
+          back = true
+        }
       }
     }
 
@@ -438,7 +448,7 @@ export default function Home() {
     const {k:angle_t15} = calc_side_4(syahen_t15,takasa_t15)
     const distance_j3 = distance({x:0,y:0,z:0},joint_pos.j3)
     const distance_j4 = distance({x:0,y:0,z:0},joint_pos.j4)
-    const result_t15 = get_J2_J3_rotate(angle_t15*(back?1:1),distance_j3,distance_j4,syahen_t15)
+    const result_t15 = get_J2_J3_rotate(angle_t15*(back?-1:1),distance_j3,distance_j4,syahen_t15)
     if(result_t15.dsp_message){
       dsp_message = result_t15.dsp_message
       return {j1_rotate,j2_rotate,j3_rotate,j4_rotate,j5_rotate,j6_rotate,dsp_message}
@@ -454,7 +464,7 @@ export default function Home() {
       return {j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
 
-    let wk_j1_rotate = normalize180(direction_t15)
+    let wk_j1_rotate = normalize180(direction_t15 + (back?180:0))
     if(isNaN(wk_j1_rotate)){
       dsp_message = "wk_j1_rotate 指定可能範囲外！"
       return {j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,j4_rotate,j5_rotate,j6_rotate,dsp_message}
@@ -476,7 +486,6 @@ export default function Home() {
       new THREE.Matrix4().setPosition(joint_pos.j4.x,joint_pos.j4.y,joint_pos.j4.z)
     )
     const j4_pos = new THREE.Vector3().applyMatrix4(mtx_j4)
-    console.log(`j4_pos:{x:${j4_pos.x}, y:${j4_pos.y}, z:${j4_pos.z}}`)
 
     const mtx_j3_wk = mtx_j3.clone().multiply(
       new THREE.Matrix4().setPosition(0,0,joint_pos.j4.z)
@@ -517,7 +526,7 @@ export default function Home() {
     )
     const j5_center_pos = new THREE.Vector3().applyMatrix4(mtx_j5_center)
 
-    const wk_j4_angle_C = toAngle(p16_zero_pos.sub(j5_center_pos).angleTo(p16_pos.sub(j5_center_pos)))
+    const wk_j4_angle_C = toAngle(p16_zero_pos.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
     const j4_base = wk_j4_angle_C * (direction_offset<0?-1:1)
     let wk_j4_rotate = normalize180((j4_base))*(j5_minus?-1:1)
@@ -601,6 +610,9 @@ export default function Home() {
       return angle
     }
     const amari = angle % 180
+    if(amari === 0){
+      return amari
+    }else
     if(amari < 0){
       return (180 + amari)
     }else{
@@ -655,13 +667,13 @@ export default function Home() {
 
   React.useEffect(() => {
     if(rendered){
-      const box15_result = getposq(p15_object)
-      const p15_pos = getpos(box15_result.position)
-      set_p15_pos(p15_pos)
+      //const box15_result = getposq(p15_object)
+      //const p15_pos = getpos(box15_result.position)
+      //set_p15_pos(p15_pos)
 
-      const box16_result = getposq(p16_object)
-      const p16_pos = getpos(box16_result.position)
-      set_p16_pos(p16_pos)
+      //const box16_result = getposq(p16_object)
+      //const p16_pos = getpos(box16_result.position)
+      //set_p16_pos(p16_pos)
 
       //set_p15_16_len(distance(p15_pos,p16_pos))
     }
