@@ -49,6 +49,8 @@ export default function Home() {
   const [start_pos,set_start_pos] = React.useState(new THREE.Vector4())
   const [save_target,set_save_target] = React.useState()
   const [vr_mode,set_vr_mode] = React.useState(false)
+  const [save_j3_pos,set_save_j3_pos] = React.useState(undefined)
+  const [save_j4_rot,set_save_j4_rot] = React.useState(undefined)
 
   const [test_pos,set_test_pos] = React.useState({x:0,y:0,z:0})
 
@@ -100,9 +102,9 @@ export default function Home() {
   React.useEffect(() => {
     if(rendered && vr_mode && trigger_on){
       const move_pos = pos_sub(start_pos,controller_object.position)
-      move_pos.x = move_pos.x/(vr_mode?1:2)
-      move_pos.y = move_pos.y/(vr_mode?1:2)
-      move_pos.z = move_pos.z/(vr_mode?1:2)
+      move_pos.x = move_pos.x
+      move_pos.y = move_pos.y
+      move_pos.z = move_pos.z
       let target_pos
       if(save_target === undefined){
         set_save_target(target)
@@ -353,7 +355,6 @@ export default function Home() {
   },[target,tool_rotate])
 
   const target_update = ()=>{
-    set_target_error(false)
     const p21_pos = get_p21_pos()
     const {direction,angle} = direction_angle(p21_pos)
     if(isNaN(direction)){
@@ -378,6 +379,7 @@ export default function Home() {
     let save_distance = undefined
     let save_distance_cnt = 0
     let save_rotate = {...result_rotate}
+    let j3_pos_wk = new THREE.Vector3()
 
     for(let i=0; i<10; i=i+1){
       set_test_pos({...shift_target})
@@ -394,7 +396,9 @@ export default function Home() {
         new THREE.Matrix4().makeRotationX(toRadian(result_rotate.j2_rotate)).setPosition(joint_pos.j2.x,joint_pos.j2.y,joint_pos.j2.z)
       ).multiply(
         new THREE.Matrix4().makeRotationX(toRadian(result_rotate.j3_rotate)).setPosition(joint_pos.j3.x,joint_pos.j3.y,joint_pos.j3.z)
-      ).multiply(
+      )
+      j3_pos_wk = new THREE.Vector3().applyMatrix4(base_m4)
+      base_m4.multiply(
         new THREE.Matrix4().makeRotationY(toRadian(result_rotate.j4_rotate)).setPosition(joint_pos.j4.x,joint_pos.j4.y,joint_pos.j4.z)
       ).multiply(
         new THREE.Matrix4().makeRotationX(toRadian(result_rotate.j5_rotate)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
@@ -460,6 +464,32 @@ export default function Home() {
     }
 
     if(dsp_message === ""){
+      if(save_j3_pos === undefined){
+        set_save_j3_pos(j3_pos_wk)
+      }else{
+        const move_distance = distance(save_j3_pos,j3_pos_wk)
+        if(move_distance > 0.1){
+          dsp_message = `j3_pos 急旋回指示！:(${move_distance})`
+          console.log(dsp_message)
+        }else{
+          set_save_j3_pos(j3_pos_wk)
+        }
+      }
+      if(save_j4_rot === undefined){
+        set_save_j4_rot(result_rotate.j4_rotate)
+      }else{
+        const j4_rot_diff = Math.abs(save_j4_rot - round(result_rotate.j4_rotate))
+        if(j4_rot_diff > 100){
+          dsp_message = `j4_rotate 急旋回指示！:(${j4_rot_diff})`
+          console.log(dsp_message)
+        }else{
+          set_save_j4_rot(result_rotate.j4_rotate)
+        }
+      }
+    }
+
+    if(dsp_message === ""){
+      set_target_error(false)
       set_j1_rotate(round(result_rotate.j1_rotate))
       set_j2_rotate(round(result_rotate.j2_rotate))
       set_j3_rotate(round(result_rotate.j3_rotate))
