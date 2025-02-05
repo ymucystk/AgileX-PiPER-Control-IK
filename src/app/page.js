@@ -428,6 +428,8 @@ export default function Home() {
             set_dsp_message("姿勢制御不可！")
             console.log(`result_target:{x:${result_target.x}, y:${result_target.y}, z:${result_target.z}}`)
             set_target_error(true)
+            set_save_j3_pos(undefined)
+            set_save_j4_rot(undefined)
             return
           }
         }
@@ -468,7 +470,7 @@ export default function Home() {
         set_save_j3_pos(j3_pos_wk)
       }else{
         const move_distance = distance(save_j3_pos,j3_pos_wk)
-        if(move_distance > 0.1){
+        if(move_distance > 0.15){
           dsp_message = `j3_pos 急旋回指示！:(${move_distance})`
           console.log(dsp_message)
         }else{
@@ -479,7 +481,7 @@ export default function Home() {
         set_save_j4_rot(result_rotate.j4_rotate)
       }else{
         const j4_rot_diff = Math.abs(save_j4_rot - round(result_rotate.j4_rotate))
-        if(j4_rot_diff > 100){
+        if(j4_rot_diff > 120){
           dsp_message = `j4_rotate 急旋回指示！:(${j4_rot_diff})`
           console.log(dsp_message)
         }else{
@@ -906,7 +908,7 @@ export default function Home() {
     <>
       <a-scene scene>
         <a-entity oculus-touch-controls="hand: right" vr-controller-right visible={false}></a-entity>
-        <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" color="#7BC8A4"></a-plane>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" color={target_error?"#ff7f50":"#7BC8A4"}></a-plane>
         <Assets/>
         <Select_Robot {...robotProps}/>
         <Cursor3dp j_id="20" pos={{x:0,y:0,z:0}} visible={cursor_vis}>
