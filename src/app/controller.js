@@ -2,6 +2,35 @@
 import * as React from 'react'
 import "./controller.css";
 
+  // モード選択
+  const ModeSelector = ({ selectedMode, setSelectedMode }) => {
+  
+    const modes = [
+      { id: 'control', label: 'Ctrl' }, // 通常の制御モード（VRゴーグル等で操作）
+      { id: 'monitor', label: 'Mon' },  // 実ロボットをモニター
+      { id: 'vr', label: 'fromVR' }     // 制御トピックをモニター(VRゴーグルからの制御)
+    ];
+  
+    return (
+        <div className="flex space-x-1 rounded-lg bg-gray-100 p-2">
+          Mode: 
+          {modes.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setSelectedMode(mode.id)}
+              className={`px-2 py-1 rounded-md ${
+                selectedMode === mode.id
+                  ? 'bg-white shadow-sm text-blue-600'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+    );
+  };
+
 export default function Controller(props) {
   const {toolNameList, toolName} = props
   const {target} = props
@@ -11,6 +40,7 @@ export default function Controller(props) {
   const {wrist_rot_x,wrist_rot_y,wrist_rot_z} = props
   const {tool_rotate} = props
   const {normalize180} = props
+  const { selectedMode, setSelectedMode } = props
 
   /*
   const set_toolName = (e)=>{
@@ -133,9 +163,15 @@ export default function Controller(props) {
     props.set_target({...target,z:value||0})
   }
 
+
+
   return (
     <>
       <div className="controller" >
+        <div className="row mb-0">
+          <ModeSelector selectedMode={selectedMode} setSelectedMode={setSelectedMode} />
+        </div>
+
         <div className="row mb-0">
           <div className="col-md-4"><label htmlFor="j1_rotate_number" className="form-label"><span className="form-control-plaintext">J1 Deg</span></label></div>
           <div className="col-md-8"><input type="number" className="form-control" id="j1_rotate_number" value={j1_rotate} onChange={set_j1_rotate} min={-180} max={180}/></div>

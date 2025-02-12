@@ -3,6 +3,16 @@ import * as React from 'react'
 import * as THREE from 'three';
 import Controller from './controller.js'
 
+
+import { connectMQTT, mqttclient, subscribeMQTT, publishMQTT } from './MQTT.js'
+const MQTT_CTRL_TOPIC = "piper/vr";
+const MQTT_ROBOT_STATE_TOPIC = "piper/real";
+
+let publish = true //VRモードに移行するまではMQTTをpublishしない（かつ、ロボット情報を取得するまで）
+let receive_state = false // ロボットの状態を受信してるかのフラグ
+let control_state = true // 自分がコントロールする人かどうか
+
+
 export default function Home() {
   const [now, setNow] = React.useState(new Date())
   const [rendered,set_rendered] = React.useState(false)
@@ -35,7 +45,8 @@ export default function Home() {
   const [p13_object,set_p13_object] = React.useState()
   const [p14_object,set_p14_object] = React.useState()
   const [p15_object,set_p15_object] = React.useState()
-  const [p16_object,set_p16_object] = React.useState()
+  const [p16_object,set_p16_object] = React.useState(new THREE.Object3D())
+  const targetRef = React.useRef(null);
   const [p20_object,set_p20_object] = React.useState()
   const [p21_object,set_p21_object] = React.useState()
   const [p22_object,set_p22_object] = React.useState()
@@ -46,6 +57,12 @@ export default function Home() {
 
   const [controller_object,set_controller_object] = React.useState(new THREE.Object3D())
   const [trigger_on,set_trigger_on] = React.useState(false)
+  const [grip_on, set_grip_on] = React.useState(false);
+  const gripRef = React.useRef(null);
+  const [button_a_on, set_button_a_on] = React.useState(false);
+  const buttonaRef = React.useRef(null);
+  const [button_b_on, set_button_b_on] = React.useState(false)
+  const buttonbRef = React.useRef(null);
   const [start_pos,set_start_pos] = React.useState(new THREE.Vector3())
   const [save_target,set_save_target] = React.useState()
   const [vr_mode,set_vr_mode] = React.useState(false)
@@ -77,6 +94,9 @@ export default function Home() {
   const [z_vec_base,set_z_vec_base] = React.useState()
   const order = 'ZYX'
 
+  // MQTT 制御モード in controller.js
+  const [selectedMode, setSelectedMode] = React.useState('control');
+
   const joint_pos = {
     base:{x:0,y:0,z:0},
     j1:{x:0,y:0,z:0},
@@ -89,6 +109,7 @@ export default function Home() {
   }
 
   const [target,set_target] = React.useState({x:0.05,y:0.43,z:-0.26})
+  const [vr_target, set_vr_target]= React.useState({x:0.05,y:0.43,z:-0.26}); // VR モードに入るときに設定すべきターゲット
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
  
@@ -239,7 +260,8 @@ export default function Home() {
 
   React.useEffect(() => {
     if (j3_object !== undefined) {
-      const rotate_value = input_rotate[2] * -1
+      //const rotate_value = input_rotate[2] * -1 // 変更の意図不明
+      const rotate_value = input_rotate[2] +165
       set_j3_rotate(rotate_value)
     }
   }, [input_rotate[2]])
@@ -265,8 +287,8 @@ export default function Home() {
     }
   }, [input_rotate[5]])
 
-  React.useEffect(() => {
-    if(rendered){
+  React.useEffect(() => {// gripper
+    if (j6_object !== undefined ){// とりあえず。j6_object があれば、gripper があると判断      
       const rotate_value = input_rotate[6]
       set_j7_rotate(rotate_value)
     }
@@ -283,6 +305,26 @@ export default function Home() {
     const p21_pos = quaternionToRotation(j5q,{x:0,y:0,z:p15_16_len})
     return p21_pos
   }
+
+  React.useEffect(() => {// 制御できるかどうかの判定
+    if (selectedMode === 'control') {
+      control_state = true;
+    }else{
+      control_state = false;
+    }
+  }, [selectedMode])
+
+  React.useEffect(() => {
+    gripRef.current = grip_on; // useEffect で最新の state を ref に格納
+  }, [grip_on]);
+
+  React.useEffect(() => {
+    buttonaRef.current = button_a_on; // useEffect で最新の state を ref に格納
+  }, [button_a_on]);
+
+  React.useEffect(() => {
+    buttonbRef.current = button_b_on; // useEffect で最新の state を ref に格納
+  }, [button_b_on]);
 
   React.useEffect(() => {
     if(rendered){
@@ -610,8 +652,10 @@ export default function Home() {
 
     const wk_j4_angle_C = toAngle(p16_zero_pos.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
+
     const j4_base = wk_j4_angle_C * (direction_offset<0?-1:1)
     let wk_j4_rotate = normalize180((j4_base))*(j5_minus?-1:1)
+
     if(wk_j4_rotate<-90){
       wk_j4_rotate = normalize180((j4_base-(j4_base+90)*2))
     }else
@@ -747,6 +791,27 @@ export default function Home() {
     return {k:kakudo, t:takasa}
   }
 
+    // XR のレンダリングフレーム毎に MQTTを呼び出したい
+    const onXRFrameMQTT = (time, frame)=> {
+      // for next frame
+      frame.session.requestAnimationFrame(onXRFrameMQTT);
+  
+      if (selectedMode != "control") return; // モードが control でない場合は何もしない
+  
+      if ((mqttclient != null) && publish && receive_state) {// 状態を受信していないと、送信しない
+  
+      // MQTT 送信
+        const ctl_json = JSON.stringify({
+          time: time,
+          joints: rotate,
+          trigger: [gripRef.current, buttonaRef.current, buttonbRef.current]
+        });
+  
+        publishMQTT(MQTT_CTRL_TOPIC, ctl_json);
+      }
+  
+    }
+  
   React.useEffect(() => {
     if(rendered){
       //const box15_result = getposq(p15_object)
@@ -765,7 +830,7 @@ export default function Home() {
     if (typeof window !== "undefined") {
       require("aframe");
       setTimeout(set_rendered(true),1)
-      console.log('set_rendered')
+//      console.log('set_rendered')
 
       if(!registered){
         registered = true
@@ -825,6 +890,7 @@ export default function Home() {
             }else
             if(this.data === 16){
               set_p16_object(this.el.object3D)
+              targetRef.current = this.el.object3D; // ここでTool の先のTarget のref を取得
             }else
             if(this.data === 20){
               set_p20_object(this.el.object3D)
@@ -859,14 +925,49 @@ export default function Home() {
               set_save_target(undefined)
               set_trigger_on(false)
             });
+            this.el.addEventListener('gripdown', (evt) => {
+              set_grip_on(true);
+            });
+            this.el.addEventListener('gripup', (evt) => {
+              set_grip_on(false);
+            });
+            this.el.addEventListener('abuttondown', (evt) => {
+              set_button_a_on(true);
+            });
+            this.el.addEventListener('abuttonup', (evt) => {
+              set_button_a_on(false);
+            });
+            this.el.addEventListener('bbuttondown', (evt) => {
+              set_button_b_on(true);
+            });
+            this.el.addEventListener('bbuttonup', (evt) => {
+              set_button_b_on(false);
+            });
           }
         });
         AFRAME.registerComponent('scene', {
           schema: {type: 'string', default: ''},
           init: function () {
+            this.el.lastsent = 0; //最終 MQTT 伝送時刻
             this.el.addEventListener('enter-vr', ()=>{
+              console.log("Now set vr_target!!",vr_target);
+              set_target(vr_target); // すでに設定されているはず
               set_vr_mode(true)
               console.log('enter-vr')
+
+              let xrSession = this.el.renderer.xr.getSession();
+
+              xrSession.requestAnimationFrame(onXRFrameMQTT);
+
+              // ここでカメラ位置を変更します
+              set_c_pos_x(0)
+              set_c_pos_y(-0.5)
+              set_c_pos_z(0.70)
+              set_c_deg_x(0)
+              set_c_deg_y(0)
+              set_c_deg_z(0)
+
+
             });
             this.el.addEventListener('exit-vr', ()=>{
               set_vr_mode(false)
@@ -874,6 +975,65 @@ export default function Home() {
             });
           }
         });
+
+        
+        // MQTT 関係
+        if (typeof window.mqttClient === 'undefined') {
+          //サブスクライブするトピックの登録
+          window.mqttClient = connectMQTT();
+          subscribeMQTT([
+            MQTT_ROBOT_STATE_TOPIC,
+            MQTT_CTRL_TOPIC  // MQTT Version5 なので、 noLocal が効くはず
+          ]);
+
+          //サブスクライブ時の処理
+          // ここで、ロボットアームの状況を、仮想側に繁栄させたい
+          window.mqttClient.on('message', (topic, message) => {
+            if (topic == MQTT_ROBOT_STATE_TOPIC) {
+              set_vr_mode((v)=>{ 
+                const vrm = v;
+                setSelectedMode((s)=>{ 
+                  if (s != "vr" && (vrm == false || s == "monitor")) {// VR_mode がfalse(準備状態)の場合/受信モードの、受信処理を行う
+                    
+                    let data = JSON.parse(message.toString())
+//                    console.log("Receive_State", s, vrm, data.joints)
+                    let j = data.joints;
+                    set_input_rotate([j[0]/1000,j[1]/1000,j[2]/1000,j[3]/1000,j[4]/1000,j[5]/1000,j[6]/1000]);
+                    // 同時に TCP (Target も変更が必要！)
+                    // target 位置の計算！
+                    const wpos = new THREE.Vector3();
+                    targetRef.current.getWorldPosition(wpos);
+                    console.log("SetVR_Target ",wpos,target);
+                    set_vr_target((vr)=>{
+                        vr.x = wpos.x; vr.y = wpos.y; vr.z = wpos.z;
+                        return vr
+                      }
+                    );
+
+                    receive_state = true;
+                // ここで定期的に設定が必要
+                    publish = true
+                  }
+                  return s;
+                });
+                return v;
+              });
+            }
+            if (topic == MQTT_CTRL_TOPIC){
+              if (control_state) return; // 自分で制御しているか
+              setSelectedMode((s)=>{ 
+                if (s == "vr") {// // 他のVRからの制御
+                  let data = JSON.parse(message.toString())
+                  console.log("Receive_Ctrl",  data.joints)
+                  let j = data.joints;
+                  set_input_rotate([j[0],j[1],-j[2]-160,j[3],j[4],j[5],j[6]]);
+                }
+                return s;
+              });
+            }
+          });
+        }
+
       }
     }
   }, [typeof window])
@@ -889,7 +1049,8 @@ export default function Home() {
     c_pos_x,set_c_pos_x,c_pos_y,set_c_pos_y,c_pos_z,set_c_pos_z,
     c_deg_x,set_c_deg_x,c_deg_y,set_c_deg_y,c_deg_z,set_c_deg_z,
     wrist_rot_x,set_wrist_rot_x,wrist_rot_y,set_wrist_rot_y,wrist_rot_z,set_wrist_rot_z,
-    tool_rotate,set_tool_rotate,normalize180
+    tool_rotate,set_tool_rotate,normalize180,
+    selectedMode, setSelectedMode
   }
 
   const robotProps = {
