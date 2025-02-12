@@ -46,7 +46,7 @@ export default function Home() {
 
   const [controller_object,set_controller_object] = React.useState(new THREE.Object3D())
   const [trigger_on,set_trigger_on] = React.useState(false)
-  const [start_pos,set_start_pos] = React.useState(new THREE.Vector4())
+  const [start_pos,set_start_pos] = React.useState(new THREE.Vector3())
   const [save_target,set_save_target] = React.useState()
   const [vr_mode,set_vr_mode] = React.useState(false)
   const [save_j3_pos,set_save_j3_pos] = React.useState(undefined)
@@ -160,7 +160,7 @@ export default function Home() {
     if (j1_object !== undefined) {
       j1_object.quaternion.setFromAxisAngle(y_vec_base,toRadian(j1_rotate))
       set_rotate((org)=>{
-        org[0] = round(normalize180(j1_rotate+(vr_mode?180:0)),3)
+        org[0] = round(normalize180(j1_rotate+180),3)
         return org
       })
     }
@@ -225,14 +225,14 @@ export default function Home() {
 
   React.useEffect(() => {
     if (j1_object !== undefined) {
-      const rotate_value = normalize180(input_rotate[0]-(vr_mode?180:0))
+      const rotate_value = normalize180(input_rotate[0]-180)
       set_j1_rotate(rotate_value)
     }
   }, [input_rotate[0]])
 
   React.useEffect(() => {
     if (j2_object !== undefined) {
-      const rotate_value = input_rotate[1] - 80
+      const rotate_value = normalize180(input_rotate[1] - 80)
       set_j2_rotate(rotate_value)
     }
   }, [input_rotate[1]])
@@ -407,7 +407,7 @@ export default function Home() {
       ).multiply(
         new THREE.Matrix4().setPosition(joint_pos.j7.x,joint_pos.j7.y,joint_pos.j7.z)
       )
-      const result_target = new THREE.Vector4(0,0,0,1).applyMatrix4(base_m4)
+      const result_target = new THREE.Vector3().applyMatrix4(base_m4)
       const sabun_pos = pos_sub(target,result_target)
       const sabun_distance = sabun_pos.x**2+sabun_pos.y**2+sabun_pos.z**2
       if(round(sabun_distance) <= 0){
@@ -442,14 +442,8 @@ export default function Home() {
     }
 
     if(dsp_message === ""){
-      if(vr_mode){
-        if(result_rotate.j1_rotate<35 && result_rotate.j1_rotate>-35){
-          dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
-        }
-      }else{
-        if(result_rotate.j1_rotate<-145 || result_rotate.j1_rotate>145){
-          dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
-        }
+      if(result_rotate.j1_rotate<35 && result_rotate.j1_rotate>-35){
+        dsp_message = `j1_rotate 指定可能範囲外！:(${result_rotate.j1_rotate})`
       }
       if(result_rotate.j2_rotate<-80 || result_rotate.j2_rotate>100){
         dsp_message = `j2_rotate 指定可能範囲外！:(${result_rotate.j2_rotate})`
@@ -857,7 +851,7 @@ export default function Home() {
             set_controller_object(this.el.object3D)
             this.el.object3D.rotation.order = order
             this.el.addEventListener('triggerdown', (evt)=>{
-              const wk_start_pos = new THREE.Vector4(0,0,0,1).applyMatrix4(this.el.object3D.matrix)
+              const wk_start_pos = new THREE.Vector3().applyMatrix4(this.el.object3D.matrix)
               set_start_pos(wk_start_pos)
               set_trigger_on(true)
             });
