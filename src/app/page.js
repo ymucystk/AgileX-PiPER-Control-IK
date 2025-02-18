@@ -1,7 +1,23 @@
 "use client";
+require('aframe');
 import * as React from 'react'
 import * as THREE from 'three';
 import Controller from './controller.js'
+
+const joint_pos = {
+  base:{x:0,y:0,z:0},
+  j1:{x:0,y:0,z:0},
+  j2:{x:0,y:0.1212,z:0},
+  j3:{x:0,y:0.28503,z:0},
+  j4:{x:0,y:0.25,z:-0.02194},
+  j5:{x:0,y:0,z:0},
+  j6:{x:0,y:0,z:0},
+  j7:{x:0,y:0,z:0.225},
+}
+
+let registered = false
+const order = 'ZYX'
+let j5_minus = false
 
 export default function Home() {
   const [now, setNow] = React.useState(new Date())
@@ -70,23 +86,10 @@ export default function Home() {
 
   const toolNameList = ["No tool"]
   const [toolName,set_toolName] = React.useState(toolNameList[0])
-  let registered = false
 
   const [x_vec_base,set_x_vec_base] = React.useState()
   const [y_vec_base,set_y_vec_base] = React.useState()
   const [z_vec_base,set_z_vec_base] = React.useState()
-  const order = 'ZYX'
-
-  const joint_pos = {
-    base:{x:0,y:0,z:0},
-    j1:{x:0,y:0,z:0},
-    j2:{x:0,y:0.1212,z:0},
-    j3:{x:0,y:0.28503,z:0},
-    j4:{x:0,y:0.25,z:-0.02194},
-    j5:{x:0,y:0,z:0},
-    j6:{x:0,y:0,z:0},
-    j7:{x:0,y:0,z:0.225},
-  }
 
   const [target,set_target] = React.useState({x:0.05,y:0.43,z:-0.26})
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
@@ -587,10 +590,11 @@ export default function Home() {
     }
     const j5_base = (180 - j5_angle_C)
     let wk_j5_rotate = normalize180((j5_base - 90))
-    let j5_minus = false
     if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
       j5_minus = true
+    }else{
+      j5_minus = false
     }
 
     const mtx_j5_zero = mtx_j4.clone().multiply(
@@ -901,7 +905,7 @@ export default function Home() {
     return (
     <>
       <a-scene scene>
-        <a-entity oculus-touch-controls="hand: right" vr-controller-right visible={false}></a-entity>
+        <a-entity oculus-touch-controls="hand: right" vr-controller-right visible={`${false}`}></a-entity>
         <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" color={target_error?"#ff7f50":"#7BC8A4"}></a-plane>
         <Assets/>
         <Select_Robot {...robotProps}/>
@@ -917,8 +921,8 @@ export default function Home() {
         <a-entity id="rig" position={`${c_pos_x} ${c_pos_y} ${c_pos_z}`} rotation={`${c_deg_x} ${c_deg_y} ${c_deg_z}`}>
           <a-camera id="camera" cursor="rayOrigin: mouse;" position="0 0 0"></a-camera>
         </a-entity>
-        <a-sphere position={edit_pos(target)} scale="0.012 0.012 0.012" color={target_error?"red":"yellow"} visible={true}></a-sphere>
-        <a-box position={edit_pos(test_pos)} scale="0.03 0.03 0.03" color="green" visible={box_vis}></a-box>
+        <a-sphere position={edit_pos(target)} scale="0.012 0.012 0.012" color={target_error?"red":"yellow"} visible={`${true}`}></a-sphere>
+        <a-box position={edit_pos(test_pos)} scale="0.03 0.03 0.03" color="green" visible={`${box_vis}`}></a-box>
         <Line pos1={{x:1,y:0.0001,z:1}} pos2={{x:-1,y:0.0001,z:-1}} visible={cursor_vis} color="white"></Line>
         <Line pos1={{x:1,y:0.0001,z:-1}} pos2={{x:-1,y:0.0001,z:1}} visible={cursor_vis} color="white"></Line>
         <Line pos1={{x:1,y:0.0001,z:0}} pos2={{x:-1,y:0.0001,z:0}} visible={cursor_vis} color="white"></Line>
@@ -960,7 +964,7 @@ const Assets = ()=>{
 const Model = (props)=>{
   const {visible, cursor_vis, edit_pos, joint_pos} = props
   return (<>{visible?
-    <a-entity robot-click="" gltf-model="#base" position={edit_pos(joint_pos.base)} visible={visible}>
+    <a-entity robot-click="" gltf-model="#base" position={edit_pos(joint_pos.base)} visible={`${visible}`}>
       <a-entity j_id="1" gltf-model="#j1" position={edit_pos(joint_pos.j1)}>
         <a-entity j_id="2" gltf-model="#j2" position={edit_pos(joint_pos.j2)}>
           <a-entity j_id="3" gltf-model="#j3" position={edit_pos(joint_pos.j3)}>
@@ -996,7 +1000,7 @@ const Model_Tool = (props)=>{
       <a-entity gltf-model="#j6_1" position={edit_pos(j6_1_pos)}></a-entity>
       <a-entity gltf-model="#j6_2" position={edit_pos(j6_2_pos)}></a-entity>
       <Cursor3dp j_id="16" pos={j7pos} visible={cursor_vis}/>
-      <a-box color="yellow" scale="0.02 0.02 0.02" position={edit_pos(j7pos)} visible={box_vis}></a-box>
+      <a-box color="yellow" scale="0.02 0.02 0.02" position={edit_pos(j7pos)} visible={`${box_vis}`}></a-box>
     </>,
   ]
   const {toolNameList, toolName} = props
@@ -1034,7 +1038,7 @@ const Cursor3dp = (props) => {
       line__2={line_z}
       position={`${pos.x} ${pos.y} ${pos.z}`}
       rotation={`${rot.x} ${rot.y} ${rot.z}`}
-      visible={visible}
+      visible={`${visible}`}
   >{children}</a-entity>
 }
 
@@ -1047,6 +1051,6 @@ const Line = (props) => {
       {...otherprops}
       line={line_para}
       position={`0 0 0`}
-      visible={visible}
+      visible={`${visible}`}
   ></a-entity>
 }
