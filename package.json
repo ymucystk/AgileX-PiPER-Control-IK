@@ -12,8 +12,9 @@
   "dependencies": {
     "aframe": "^1.6.0",
     "bootstrap": "^5.3.3",
-    "next": "14.2.4",
-    "react": "^18",
-    "react-dom": "^18"
+    "mqtt": "^5.10.3",
+    "next": "15.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
