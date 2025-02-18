@@ -1,7 +1,7 @@
 "use client";
-require('aframe');
+import 'aframe'
 import * as React from 'react'
-import * as THREE from 'three';
+import * as THREE from 'three'
 import Controller from './controller.js'
 
 const joint_pos = {
