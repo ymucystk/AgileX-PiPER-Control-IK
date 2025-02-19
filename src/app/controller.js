@@ -41,6 +41,7 @@ export default function Controller(props) {
   const {tool_rotate} = props
   const {normalize180} = props
   const { selectedMode, setSelectedMode } = props
+  const {vr_mode} = props
 
   /*
   const set_toolName = (e)=>{
@@ -208,7 +209,7 @@ export default function Controller(props) {
         </div>*/}
       </div>
       <div className="camera-controller" >
-        <span>CAMERA</span>
+        {vr_mode?null:<><span>CAMERA</span>
         <div className="row mb-0">
           <div className="col-md-4"><label htmlFor="c_pos_x_number" className="form-label"><span className="form-control-plaintext">pos X</span></label></div>
           <div className="col-md-8"><input type="number" className="form-control" id="c_pos_x_number" value={c_pos_x} onChange={set_c_pos_x} step={0.01}/></div>
@@ -234,7 +235,7 @@ export default function Controller(props) {
           <div className="col-md-8"><input type="number" className="form-control" id="c_deg_z_number" value={c_deg_z} onChange={set_c_deg_z} step={0.1}/></div>
         </div>
         <div className="row mb-2">
-        </div>
+        </div></>}
 
         <span>ARM DEG</span>
         <div className="row mb-0">
