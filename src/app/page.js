@@ -590,7 +590,7 @@ export default function Home() {
     }
     const j5_base = (180 - j5_angle_C)
     let wk_j5_rotate = normalize180((j5_base - 90))
-    if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
+    if(round((wk_j2_rotate+wk_j3_rotate),1)>=round(wrist_angle,1)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
       j5_minus = true
     }else{
@@ -893,7 +893,7 @@ export default function Home() {
     c_pos_x,set_c_pos_x,c_pos_y,set_c_pos_y,c_pos_z,set_c_pos_z,
     c_deg_x,set_c_deg_x,c_deg_y,set_c_deg_y,c_deg_z,set_c_deg_z,
     wrist_rot_x,set_wrist_rot_x,wrist_rot_y,set_wrist_rot_y,wrist_rot_z,set_wrist_rot_z,
-    tool_rotate,set_tool_rotate,normalize180
+    tool_rotate,set_tool_rotate,normalize180,vr_mode
   }
 
   const robotProps = {
