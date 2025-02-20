@@ -632,7 +632,7 @@ export default function Home() {
     }
     const j5_base = (180 - j5_angle_C)
     let wk_j5_rotate = normalize180((j5_base - 90))
-    if(round((wk_j2_rotate+wk_j3_rotate),1)>=round(wrist_angle,1)){
+    if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
       j5_minus = true
     }else{
