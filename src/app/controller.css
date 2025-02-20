@@ -12,7 +12,7 @@
 }
 .camera-controller{
     position: fixed;
-    top: 10px;
+    top: 30px;
     left: 20px;
     width: 300px;
     background-color:rgba(192,192,192,0.2);
