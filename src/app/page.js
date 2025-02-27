@@ -467,7 +467,7 @@ export default function Home() {
         set_save_j3_pos(j3_pos_wk)
       }else{
         const move_distance = distance(save_j3_pos,j3_pos_wk)
-        if(move_distance > 0.15){
+        if(move_distance > 0.25){
           dsp_message = `j3_pos 急旋回指示！:(${move_distance})`
           console.log(dsp_message)
         }else{
@@ -767,8 +767,7 @@ export default function Home() {
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
-      require("aframe");
-      setTimeout(set_rendered(true),1)
+      setTimeout(()=>set_rendered(true),1)
       console.log('set_rendered')
 
       if(!registered){
@@ -868,6 +867,7 @@ export default function Home() {
         AFRAME.registerComponent('scene', {
           schema: {type: 'string', default: ''},
           init: function () {
+            //this.el.enterVR();
             this.el.addEventListener('enter-vr', ()=>{
               set_vr_mode(true)
               console.log('enter-vr')
