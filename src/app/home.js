@@ -20,7 +20,7 @@ const order = 'ZYX'
 let j5_minus = false
 
 export default function DynamicHome() {
-  const [now, setNow] = React.useState(new Date())
+  const [tick, setTick] = React.useState(0)
   const [rendered,set_rendered] = React.useState(false)
   const robotNameList = ["Model"]
   const [robotName,set_robotName] = React.useState(robotNameList[0])
@@ -95,13 +95,6 @@ export default function DynamicHome() {
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
  
-  React.useEffect(function() {
-    const intervalId = setInterval(function() {
-      setNow(new Date());
-    }, 10);
-    return function(){clearInterval(intervalId)};
-  }, [now]);
-
   React.useEffect(() => {
     if(rendered && vr_mode && trigger_on){
       const move_pos = pos_sub(start_pos,controller_object.position)
@@ -752,135 +745,122 @@ export default function DynamicHome() {
   }
 
   React.useEffect(() => {
-    if(rendered){
-      //const box15_result = getposq(p15_object)
-      //const p15_pos = getpos(box15_result.position)
-      //set_p15_pos(p15_pos)
+    if(!registered){
+      registered = true
 
-      //const box16_result = getposq(p16_object)
-      //const p16_pos = getpos(box16_result.position)
-      //set_p16_pos(p16_pos)
-
-      //set_p15_16_len(distance(p15_pos,p16_pos))
-    }
-  },[now])
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
       setTimeout(()=>set_rendered(true),1)
       console.log('set_rendered')
 
-      if(!registered){
-        registered = true
+      const teihen = joint_pos.j5.x
+      const takasa = joint_pos.j3.y + joint_pos.j4.y
+      const result = calc_side_2(teihen, takasa)
+      set_p14_maxlen(result.s)
 
-        const teihen = joint_pos.j5.x
-        const takasa = joint_pos.j3.y + joint_pos.j4.y
-        const result = calc_side_2(teihen, takasa)
-        set_p14_maxlen(result.s)
-
-        set_x_vec_base(new THREE.Vector3(1,0,0).normalize())
-        set_y_vec_base(new THREE.Vector3(0,1,0).normalize())
-        set_z_vec_base(new THREE.Vector3(0,0,1).normalize())
-      
-        AFRAME.registerComponent('robot-click', {
-          init: function () {
-            this.el.addEventListener('click', (evt)=>{
-              robotChange()
-              console.log('robot-click')
-            });
+      set_x_vec_base(new THREE.Vector3(1,0,0).normalize())
+      set_y_vec_base(new THREE.Vector3(0,1,0).normalize())
+      set_z_vec_base(new THREE.Vector3(0,0,1).normalize())
+    
+      AFRAME.registerComponent('robot-click', {
+        init: function () {
+          this.el.addEventListener('click', (evt)=>{
+            robotChange()
+            console.log('robot-click')
+          });
+        }
+      });
+      AFRAME.registerComponent('j_id', {
+        schema: {type: 'number', default: 0},
+        init: function () {
+          if(this.data === 1){
+            set_j1_object(this.el.object3D)
+          }else
+          if(this.data === 2){
+            set_j2_object(this.el.object3D)
+          }else
+          if(this.data === 3){
+            set_j3_object(this.el.object3D)
+          }else
+          if(this.data === 4){
+            set_j4_object(this.el.object3D)
+          }else
+          if(this.data === 5){
+            set_j5_object(this.el.object3D)
+          }else
+          if(this.data === 6){
+            set_j6_object(this.el.object3D)
+          }else
+          if(this.data === 11){
+            set_p11_object(this.el.object3D)
+          }else
+          if(this.data === 12){
+            set_p12_object(this.el.object3D)
+          }else
+          if(this.data === 13){
+            set_p13_object(this.el.object3D)
+          }else
+          if(this.data === 14){
+            set_p14_object(this.el.object3D)
+          }else
+          if(this.data === 15){
+            set_p15_object(this.el.object3D)
+          }else
+          if(this.data === 16){
+            set_p16_object(this.el.object3D)
+          }else
+          if(this.data === 20){
+            set_p20_object(this.el.object3D)
+          }else
+          if(this.data === 21){
+            set_p21_object(this.el.object3D)
+          }else
+          if(this.data === 22){
+            set_p22_object(this.el.object3D)
+          }else
+          if(this.data === 51){
+            set_p51_object(this.el.object3D)
           }
-        });
-        AFRAME.registerComponent('j_id', {
-          schema: {type: 'number', default: 0},
-          init: function () {
-            if(this.data === 1){
-              set_j1_object(this.el.object3D)
-            }else
-            if(this.data === 2){
-              set_j2_object(this.el.object3D)
-            }else
-            if(this.data === 3){
-              set_j3_object(this.el.object3D)
-            }else
-            if(this.data === 4){
-              set_j4_object(this.el.object3D)
-            }else
-            if(this.data === 5){
-              set_j5_object(this.el.object3D)
-            }else
-            if(this.data === 6){
-              set_j6_object(this.el.object3D)
-            }else
-            if(this.data === 11){
-              set_p11_object(this.el.object3D)
-            }else
-            if(this.data === 12){
-              set_p12_object(this.el.object3D)
-            }else
-            if(this.data === 13){
-              set_p13_object(this.el.object3D)
-            }else
-            if(this.data === 14){
-              set_p14_object(this.el.object3D)
-            }else
-            if(this.data === 15){
-              set_p15_object(this.el.object3D)
-            }else
-            if(this.data === 16){
-              set_p16_object(this.el.object3D)
-            }else
-            if(this.data === 20){
-              set_p20_object(this.el.object3D)
-            }else
-            if(this.data === 21){
-              set_p21_object(this.el.object3D)
-            }else
-            if(this.data === 22){
-              set_p22_object(this.el.object3D)
-            }else
-            if(this.data === 51){
-              set_p51_object(this.el.object3D)
-            }
-          },
-          remove: function () {
-            if(this.data === 16){
-              set_p16_object(this.el.object3D)
-            }
+        },
+        remove: function () {
+          if(this.data === 16){
+            set_p16_object(this.el.object3D)
           }
-        });
-        AFRAME.registerComponent('vr-controller-right', {
-          schema: {type: 'string', default: ''},
-          init: function () {
-            set_controller_object(this.el.object3D)
-            this.el.object3D.rotation.order = order
-            this.el.addEventListener('triggerdown', (evt)=>{
-              const wk_start_pos = new THREE.Vector3().applyMatrix4(this.el.object3D.matrix)
-              set_start_pos(wk_start_pos)
-              set_trigger_on(true)
-            });
-            this.el.addEventListener('triggerup', (evt)=>{
-              set_save_target(undefined)
-              set_trigger_on(false)
-            });
-          }
-        });
-        AFRAME.registerComponent('scene', {
-          schema: {type: 'string', default: ''},
-          init: function () {
-            //this.el.enterVR();
-            this.el.addEventListener('enter-vr', ()=>{
-              set_vr_mode(true)
-              console.log('enter-vr')
-            });
-            this.el.addEventListener('exit-vr', ()=>{
-              set_vr_mode(false)
-              console.log('exit-vr')
-            });
-          }
-        });
-      }
+        }
+      });
+      AFRAME.registerComponent('vr-controller-right', {
+        schema: {type: 'string', default: ''},
+        init: function () {
+          set_controller_object(this.el.object3D)
+          this.el.object3D.rotation.order = order
+          this.el.addEventListener('triggerdown', (evt)=>{
+            const wk_start_pos = new THREE.Vector3().applyMatrix4(this.el.object3D.matrix)
+            set_start_pos(wk_start_pos)
+            set_trigger_on(true)
+          });
+          this.el.addEventListener('triggerup', (evt)=>{
+            set_save_target(undefined)
+            set_trigger_on(false)
+          });
+        }
+      });
+      AFRAME.registerComponent('scene', {
+        schema: {type: 'string', default: ''},
+        init: function () {
+          //this.el.enterVR();
+          this.el.addEventListener('enter-vr', ()=>{
+            set_vr_mode(true)
+            console.log('enter-vr')
+          });
+          this.el.addEventListener('exit-vr', ()=>{
+            set_vr_mode(false)
+            console.log('exit-vr')
+          });
+        },
+        tick: function (t) {
+          setTick(t)
+        }
+      });
     }
-  }, [typeof window])
+  },[])
 
   const edit_pos = (posxyz)=>`${posxyz.x} ${posxyz.y} ${posxyz.z}`
 
