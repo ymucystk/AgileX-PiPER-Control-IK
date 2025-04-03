@@ -28,7 +28,7 @@ let save_rotation = new THREE.Euler(0.6654549523360951,0,0,order)
 let current_rotation = new THREE.Euler(0.6654549523360951,0,0,order)
 const max_move_unit = (1/720)
 const rotate_table = [[],[],[],[],[],[]]
-const object_table = []
+const object3D_table = []
 const rotvec_table = [y_vec_base,x_vec_base,x_vec_base,y_vec_base,x_vec_base,z_vec_base]
 let target_move_distance = 0.2
 const target_move_speed = (1000/2)
@@ -204,34 +204,37 @@ export default function DynamicHome(props) {
 
   React.useEffect(()=>{
     for(let i=0; i<rotate_table.length; i=i+1){
-      if(rotate_table[i].length > 0){
-        if(rotate_table[i][0].first){
-          rotate_table[i][0].first = false
-          rotate_table[i][0].starttime = performance.now()
-          rotate_table[i][0].start_quaternion = object_table[i].quaternion.clone()
-          rotate_table[i][0].end_quaternion = new THREE.Quaternion().setFromAxisAngle(rotvec_table[i],toRadian(rotate_table[i][0].rot))
+      const current_table = rotate_table[i]
+      const current_object3D = object3D_table[i]
+      if(current_table.length > 0){
+        const current_data = current_table[0]
+        if(current_data.first){
+          current_data.first = false
+          current_data.starttime = performance.now()
+          current_data.start_quaternion = current_object3D.quaternion.clone()
+          current_data.end_quaternion = new THREE.Quaternion().setFromAxisAngle(rotvec_table[i],toRadian(current_data.rot))
           const move_time_1 = target_move_distance*target_move_speed
           const wk_euler = new THREE.Quaternion().angleTo(
-            rotate_table[i][0].start_quaternion.clone().invert().multiply(rotate_table[i][0].end_quaternion))
+            current_data.start_quaternion.clone().invert().multiply(current_data.end_quaternion))
           const move_time_2 = (toAngle(wk_euler)*max_move_unit)*1000
-          rotate_table[i][0].move_time = Math.max(move_time_1,move_time_2)
-          rotate_table[i][0].endtime = rotate_table[i][0].starttime + rotate_table[i][0].move_time
+          current_data.move_time = Math.max(move_time_1,move_time_2)
+          current_data.endtime = current_data.starttime + current_data.move_time
         }
         const current_time = performance.now()
-        if(current_time < rotate_table[i][0].endtime){
-          const elapsed_time = current_time - rotate_table[i][0].starttime
-          object_table[i].quaternion.slerpQuaternions(
-            rotate_table[i][0].start_quaternion,rotate_table[i][0].end_quaternion,(elapsed_time/rotate_table[i][0].move_time))
+        if(current_time < current_data.endtime){
+          const elapsed_time = current_time - current_data.starttime
+          current_object3D.quaternion.slerpQuaternions(
+            current_data.start_quaternion,current_data.end_quaternion,(elapsed_time/current_data.move_time))
         }else{
-          object_table[i].quaternion.copy(rotate_table[i][0].end_quaternion)
-          rotate_table[i].shift()
+          current_object3D.quaternion.copy(current_data.end_quaternion)
+          current_table.shift()
         }
       }
     }
   }, [now])
 
   React.useEffect(() => {
-    if (rendered && object_table[0] !== undefined) {
+    if (rendered && object3D_table[0] !== undefined) {
       if(rotate_table[0].length > 1){
         rotate_table[0].pop()
       }
@@ -240,7 +243,7 @@ export default function DynamicHome(props) {
   }, [j1_rotate])
 
   React.useEffect(() => {
-    if (rendered && object_table[1] !== undefined) {
+    if (rendered && object3D_table[1] !== undefined) {
       if(rotate_table[1].length > 1){
         rotate_table[1].pop()
       }
@@ -249,7 +252,7 @@ export default function DynamicHome(props) {
   }, [j2_rotate])
 
   React.useEffect(() => {
-    if (rendered && object_table[2] !== undefined) {
+    if (rendered && object3D_table[2] !== undefined) {
       if(rotate_table[2].length > 1){
         rotate_table[2].pop()
       }
@@ -258,7 +261,7 @@ export default function DynamicHome(props) {
   }, [j3_rotate])
 
   React.useEffect(() => {
-    if (rendered && object_table[3] !== undefined) {
+    if (rendered && object3D_table[3] !== undefined) {
       if(rotate_table[3].length > 1){
         rotate_table[3].pop()
       }
@@ -267,7 +270,7 @@ export default function DynamicHome(props) {
   }, [j4_rotate])
 
   React.useEffect(() => {
-    if (rendered && object_table[4] !== undefined) {
+    if (rendered && object3D_table[4] !== undefined) {
       if(rotate_table[4].length > 1){
         rotate_table[4].pop()
       }
@@ -276,7 +279,7 @@ export default function DynamicHome(props) {
   }, [j5_rotate])
 
   React.useEffect(() => {
-    if (rendered && object_table[5] !== undefined) {
+    if (rendered && object3D_table[5] !== undefined) {
       if(rotate_table[5].length > 1){
         rotate_table[5].pop()
       }
@@ -295,7 +298,7 @@ export default function DynamicHome(props) {
   }, [j1_rotate,j2_rotate,j3_rotate,j4_rotate,j5_rotate,j6_rotate,j7_rotate])
 
   React.useEffect(() => {
-    if (object_table[0] !== undefined) {
+    if (object3D_table[0] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = normalize180(input_rotate[0]-180)
       set_j1_rotate(rotate_value)
@@ -303,7 +306,7 @@ export default function DynamicHome(props) {
   }, [input_rotate[0]])
 
   React.useEffect(() => {
-    if (object_table[1] !== undefined) {
+    if (object3D_table[1] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = normalize180(input_rotate[1] - 80)
       set_j2_rotate(rotate_value)
@@ -311,7 +314,7 @@ export default function DynamicHome(props) {
   }, [input_rotate[1]])
 
   React.useEffect(() => {
-    if (object_table[2] !== undefined) {
+    if (object3D_table[2] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = input_rotate[2] * -1
       set_j3_rotate(rotate_value)
@@ -319,7 +322,7 @@ export default function DynamicHome(props) {
   }, [input_rotate[2]])
 
   React.useEffect(() => {
-    if (object_table[3] !== undefined) {
+    if (object3D_table[3] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = input_rotate[3]
       set_j4_rotate(rotate_value)
@@ -327,7 +330,7 @@ export default function DynamicHome(props) {
   }, [input_rotate[3]])
 
   React.useEffect(() => {
-    if (object_table[4] !== undefined) {
+    if (object3D_table[4] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = input_rotate[4] - 90
       set_j5_rotate(rotate_value)
@@ -335,7 +338,7 @@ export default function DynamicHome(props) {
   }, [input_rotate[4]])
 
   React.useEffect(() => {
-    if (object_table[5] !== undefined) {
+    if (object3D_table[5] !== undefined) {
       target_move_distance = 0.1
       const rotate_value = input_rotate[5]
       set_j6_rotate(rotate_value)
@@ -855,22 +858,22 @@ export default function DynamicHome(props) {
         schema: {type: 'number', default: 0},
         init: function () {
           if(this.data === 1){
-            object_table[0] = this.el.object3D
+            object3D_table[0] = this.el.object3D
           }else
           if(this.data === 2){
-            object_table[1] = this.el.object3D
+            object3D_table[1] = this.el.object3D
           }else
           if(this.data === 3){
-            object_table[2] = this.el.object3D
+            object3D_table[2] = this.el.object3D
           }else
           if(this.data === 4){
-            object_table[3] = this.el.object3D
+            object3D_table[3] = this.el.object3D
           }else
           if(this.data === 5){
-            object_table[4] = this.el.object3D
+            object3D_table[4] = this.el.object3D
           }else
           if(this.data === 6){
-            object_table[5] = this.el.object3D
+            object3D_table[5] = this.el.object3D
           }else
           if(this.data === 11){
             set_p11_object(this.el.object3D)
