@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+#
+#  Metwork Project  (sip3-metawork)
+# 
 
-## Getting Started
+# Aglie-X Piper IK
 
-First, run the development server:
+Aglie-X Pipe を IK で MQTT 経由で Joint 情報を送るコード
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+pnpm install 
+pnpm dev-https
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2025/4/5 に next.js 15.2.4 に変更
+MetaworkMQTT プロトコルに対応中。なんとか動きそう。
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+ただし、実ロボットに適用するには、まだ危険。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+Chrome ブラウザで動かすには、WebXR のプラグイン（Immersive Web Emulator)が必要です。
+https://chromewebstore.google.com/detail/immersive-web-emulator/cgffilbpcibhmcfbgggfhfolhkfbhmik?hl=ja
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+また、MQTTの設定などが static に書いてあるので修正が必要です。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+MQTT 側で動作するマネージャもプロトタイプを作りました
 
-## Deploy on Vercel
+https://github.com/nkawa/MetaworkMQTT
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+（なお sora2.uclab.jp であれば、すでに MetaworkMQTT が入れてあるので、入れなくても動作するはず）
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A-Frame 1.7.1 にあげようとしたら、 Immersive Web Emulator がうまく動かないので、戻しました。

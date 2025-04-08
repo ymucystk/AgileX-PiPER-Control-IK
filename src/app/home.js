@@ -1,8 +1,18 @@
 "use client";
 import 'aframe'
 import * as React from 'react'
-import * as THREE from 'three'
+//import * as THREE from 'three' // これだと、THREE のインスタンスが複数になり問題
+const THREE = window.AFRAME.THREE; // これで　AFRAME と　THREEを同時に使える
+import 'aframe-troika-text';
+
 import Controller from './controller.js'
+
+import { connectMQTT, mqttclient,idtopic,subscribeMQTT, publishMQTT } from '../lib/MetaworkMQTT'
+const MQTT_REQUEST_TOPIC = "mgr/request";
+const MQTT_DEVICE_TOPIC = "dev/"+idtopic;
+const MQTT_CTRL_TOPIC =        "control/"+idtopic; // 自分のIDに制御を送信
+const MQTT_ROBOT_STATE_TOPIC = "robot/"; // Viwer のばあい
+let receive_state = false // ロボットの状態を受信してるかのフラグ
 
 const joint_pos = {
   base:{x:0,y:0,z:0},
@@ -53,6 +63,8 @@ export default function DynamicHome(props) {
   const [j7_rotate,set_j7_rotate] = React.useState(24) //指用
 
   const [rotate, set_rotate] = React.useState([0,0,0,0,0,0,0])  //出力用
+  const rotateRef = React.useRef(null); // ref を使って rotate を保持する
+
   const [input_rotate, set_input_rotate] = React.useState([0,0,0,0,0,0,0])  //入力用
 
   const [p11_object,set_p11_object] = React.useState()
@@ -61,6 +73,7 @@ export default function DynamicHome(props) {
   const [p14_object,set_p14_object] = React.useState()
   const [p15_object,set_p15_object] = React.useState()
   const [p16_object,set_p16_object] = React.useState()
+  const target_p16_ref = React.useRef(null)
   const [p20_object,set_p20_object] = React.useState()
   const [p21_object,set_p21_object] = React.useState()
   const [p22_object,set_p22_object] = React.useState()
@@ -73,6 +86,19 @@ export default function DynamicHome(props) {
   const vrModeRef = React.useRef(false); // vr_mode はref のほうが使いやすい
   //const [save_j3_pos,set_save_j3_pos] = React.useState(undefined)
   //const [save_j4_rot,set_save_j4_rot] = React.useState(undefined)
+
+  const [grip_on, set_grip_on] = React.useState(false);
+  const [grip_value, set_grip_value] = React.useState(0);
+  const gripRef = React.useRef(false);
+  const gripValueRef = React.useRef(0);
+
+  const [button_a_on, set_button_a_on] = React.useState(false);
+  const buttonaRef = React.useRef(null);
+  const [button_b_on, set_button_b_on] = React.useState(false)
+  const buttonbRef = React.useRef(null);
+  const [selectedMode, setSelectedMode] = React.useState('control'); //　モード
+  const robotIDRef = React.useRef("none"); // ロボットのIDを保持するためのref
+
 
   const [test_pos,set_test_pos] = React.useState({x:0,y:0,z:0})
 
@@ -97,6 +123,14 @@ export default function DynamicHome(props) {
   const [p15_16_len,set_p15_16_len] = React.useState(joint_pos.j7.z)
   const [p14_maxlen,set_p14_maxlen] = React.useState(0)
 
+  const [do_target_update, set_do_target_update] = React.useState(0) // count up for each target_update call
+
+  // レンダリング毎に表示させる
+  /*
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  console.log('Render count:', renderCount.current);
+ */
   const reqIdRef = React.useRef()
 
   const loop = ()=>{
@@ -136,11 +170,14 @@ export default function DynamicHome(props) {
   }
 
   React.useEffect(() => {
+//    console.log("effect controller!",rendered , vrModeRef.current, trigger_on)
     if(rendered && vrModeRef.current && trigger_on){
       const move_pos = pos_sub(start_pos,controller_object.position)
-      move_pos.x = move_pos.x/5
-      move_pos.y = move_pos.y/5
-      move_pos.z = move_pos.z/5
+/*
+      move_pos.x = move_pos.x/2
+      move_pos.y = move_pos.y/2
+      move_pos.z = move_pos.z/2
+      */
       let target_pos
       if(save_target === undefined){
         set_save_target({...target})
@@ -148,7 +185,7 @@ export default function DynamicHome(props) {
       }else{
         target_pos = pos_sub(save_target,move_pos)
       }
-      if(target_pos.y < 0.012){
+      if(target_pos.y < 0.012){ // do not touch ground
         target_pos.y = 0.012
       }
       set_target({x:round(target_pos.x),y:round(target_pos.y),z:round(target_pos.z)})
@@ -187,9 +224,14 @@ export default function DynamicHome(props) {
 
   React.useEffect(() => {
     if(rendered){
-      target_update()
+      set_do_target_update((prev) => prev + 1) // increment the counter to trigger target_update
     }
   },[rendered])
+
+  // これで、同じレンダリングタイミングでの複数の target_update を回避
+  React.useEffect(()=>{
+    target_update();
+  },[do_target_update])
 
   const robotChange = ()=>{
     const get = (robotName)=>{
@@ -203,6 +245,8 @@ export default function DynamicHome(props) {
   }
 
   React.useEffect(()=>{
+    // 
+//    console.log("Now!",now,    controller_object.rotation.x)
     for(let i=0; i<rotate_table.length; i=i+1){
       const current_table = rotate_table[i]
       const current_object3D = object3D_table[i]
@@ -288,19 +332,21 @@ export default function DynamicHome(props) {
   }, [j6_rotate])
 
   React.useEffect(() => {
-    if(!props.viewer){
+//    if(!props.viewer){
       const new_rotate = [
         round(j1_rotate,3),round(j2_rotate,3),round(j3_rotate,3),
         round(j4_rotate,3),round(j5_rotate,3),round(j6_rotate,3),round(j7_rotate,3)
       ]
       set_rotate(new_rotate)
-    }
+      rotateRef.current = new_rotate
+//      console.log("New Rotate",new_rotate)
+//    }
   }, [j1_rotate,j2_rotate,j3_rotate,j4_rotate,j5_rotate,j6_rotate,j7_rotate])
 
   React.useEffect(() => {
     if (object3D_table[0] !== undefined) {
       target_move_distance = 0.1
-      const rotate_value = normalize180(input_rotate[0]-180)
+      const rotate_value = normalize180(input_rotate[0])
       set_j1_rotate(rotate_value)
     }
   }, [input_rotate[0]])
@@ -308,7 +354,7 @@ export default function DynamicHome(props) {
   React.useEffect(() => {
     if (object3D_table[1] !== undefined) {
       target_move_distance = 0.1
-      const rotate_value = normalize180(input_rotate[1] - 80)
+      const rotate_value = normalize180(input_rotate[1])
       set_j2_rotate(rotate_value)
     }
   }, [input_rotate[1]])
@@ -316,7 +362,7 @@ export default function DynamicHome(props) {
   React.useEffect(() => {
     if (object3D_table[2] !== undefined) {
       target_move_distance = 0.1
-      const rotate_value = input_rotate[2] * -1
+      const rotate_value = input_rotate[2]
       set_j3_rotate(rotate_value)
     }
   }, [input_rotate[2]])
@@ -332,7 +378,7 @@ export default function DynamicHome(props) {
   React.useEffect(() => {
     if (object3D_table[4] !== undefined) {
       target_move_distance = 0.1
-      const rotate_value = input_rotate[4] - 90
+      const rotate_value = input_rotate[4]
       set_j5_rotate(rotate_value)
     }
   }, [input_rotate[4]])
@@ -352,6 +398,128 @@ export default function DynamicHome(props) {
     }
   }, [input_rotate[6]])
 
+
+  const requestRobot = (mqclient) =>{
+        // 制御対象のロボットを探索（表示された時点で実施）
+        const requestInfo = {
+          devId: idtopic, // 自分のID
+          type: "PiPER-control",  //  PiPERの実機（抽象度高く設定できてもいいかも）
+        }
+        console.log("Publish request",requestInfo)
+        publishMQTT(MQTT_REQUEST_TOPIC, JSON.stringify(requestInfo));
+  }
+// MQTT の初期設定
+// MetaworkMQTT protocol
+  // register to MQTT
+  React.useEffect(() => {
+    if (typeof window.mqttClient === 'undefined') {
+      //サブスクライブするトピックの登録
+      window.mqttClient = connectMQTT(requestRobot);
+      subscribeMQTT([
+        MQTT_DEVICE_TOPIC
+      ]);
+
+      if(props.viewer){
+        //サブスクライブ時の処理
+        window.mqttClient.on('message', (topic, message) => {
+          if (topic == MQTT_DEVICE_TOPIC){ // デバイスへの連絡用トピック
+            console.log(" MQTT Device Topic: ", message.toString());
+              // ここでは Viewer の設定を実施！
+            let data = JSON.parse(message.toString())
+            if (data.controller != undefined) {// コントローラ情報ならば！
+              robotIDRef.current = data.devId
+              subscribeMQTT([
+                "control/"+data.devId
+              ]);
+            }
+          }else if (topic == "control/"+robotIDRef.current){
+            let data = JSON.parse(message.toString())
+            if (data.joints != undefined) {
+              set_input_rotate(data.joints) // Viwer の場合
+            }
+          }
+        })
+      }else{// not viewer 
+        //自分向けメッセージサブスクライブ処理
+        window.mqttClient.on('message', (topic, message) => {
+          if (topic === MQTT_DEVICE_TOPIC){ // デバイスへの連絡用トピック
+            let data = JSON.parse(message.toString())
+            console.log(" MQTT Device Topic: ", message.toString());
+            if (data.devId === "none") {
+              console.log("Can't find robot!")
+            }else{
+              robotIDRef.current = data.devId 
+              if (receive_state == false ){ // ロボットの姿勢を受け取るまで、スタートしない。
+                subscribeMQTT([
+                  MQTT_ROBOT_STATE_TOPIC+robotIDRef.current // ロボットの姿勢を待つ
+                ])
+              }
+            }
+          }
+          if (topic === MQTT_ROBOT_STATE_TOPIC+robotIDRef.current){ // ロボットの姿勢を受け取ったら
+            let data = JSON.parse(message.toString()) ///
+            const joints = data.joints
+            // ここで、本来は joints の安全チェックをすべき
+            if (!receive_state){
+              if(props.monitor ===undefined){  // モニターじゃなかったら
+                mqttclient.unsubscribe(MQTT_ROBOT_STATE_TOPIC+robotIDRef.current) // これでロボット姿勢の受信は終わり
+                receive_state = true;
+              }
+              console.log(joints)
+              set_input_rotate(joints)
+            
+              window.setTimeout(()=>{
+                // まず IK の結果を自分の位置に設定
+                // p16_objectに位置があるはず
+                if (target_p16_ref.current !== null){
+                  const obj = target_p16_ref.current
+                  const p16_pos = obj.getWorldPosition(new THREE.Vector3())
+                  const p16_quat = obj.getWorldQuaternion(new THREE.Quaternion())
+                  const p16_euler = new THREE.Euler().setFromQuaternion(p16_quat,order)
+//                  console.log("P16 ",p16_pos,p16_quat)
+
+                  // target を設定
+                  set_target_org({x:p16_pos.x,y:p16_pos.y,z:p16_pos.z})
+                  set_wrist_rot_x(round(toAngle(p16_euler.x)))
+                  set_wrist_rot_y(round(toAngle(p16_euler.y)))
+                  set_wrist_rot_z(round(toAngle(p16_euler.z)))
+
+
+                }else{
+                  console.log("P16 object is null!")
+                  receive_state = false
+                }
+                if(props.monitor === undefined){ // モニターじゃなかったら
+  
+                  publishMQTT("dev/"+robotIDRef.current, JSON.stringify({controller: "browser", devId: idtopic})) // 自分の topic を教える
+                }
+              }, 500);// 500msec 後に自分の位置を取得する
+            
+            }
+
+
+          }
+
+ 
+  
+        })
+      }
+    }
+    // 消える前にイベントを呼びたい
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [])
+
+  const handleBeforeUnload = () => {
+    if (mqttclient != undefined) {
+      publishMQTT("mgr/unregister", JSON.stringify({ devId: idtopic }));
+    }
+  }
+
+
+
   const get_j5_quaternion = (rot_x=wrist_rot_x,rot_y=wrist_rot_y,rot_z=wrist_rot_z)=>{
     return new THREE.Quaternion().setFromEuler(
       new THREE.Euler(toRadian(rot_x), toRadian(rot_y), toRadian(rot_z), order)
@@ -366,7 +534,7 @@ export default function DynamicHome(props) {
 
   React.useEffect(() => {
     if(rendered){
-      target_update()
+      set_do_target_update((prev) => prev + 1) // increment the counter to trigger target_update
 
       if(p51_object)p51_object.quaternion.copy(get_j5_quaternion())
   
@@ -430,7 +598,7 @@ export default function DynamicHome(props) {
 
   React.useEffect(() => {
     if(rendered){
-      target_update()
+      set_do_target_update((prev) => prev + 1) // increment the counter to trigger target_update
     }
   },[target,tool_rotate])
 
@@ -447,6 +615,8 @@ export default function DynamicHome(props) {
       set_dsp_message("p21_pos 指定可能範囲外！")
       return
     }
+//    console.log("set wrist!", direction, angle, do_target_update)
+
     set_wrist_degree({direction,angle})
 
     target15_update(direction,angle)
@@ -834,12 +1004,52 @@ export default function DynamicHome(props) {
     return {k:kakudo, t:takasa}
   }
 
+  // ロボット姿勢を定常的に送信 
+  const onAnimationMQTT = (time) =>{
+    const robot_state_json = JSON.stringify({
+      time: time,
+      joints: rotateRef.current,
+      grip: gripRef.current
+//        trigger: [gripRef.current, buttonaRef.current, buttonbRef.current, gripValueRef.current]
+    });
+    publishMQTT(MQTT_ROBOT_STATE_TOPIC+idtopic , robot_state_json);
+    window.requestAnimationFrame(onAnimationMQTT);
+  }
+
+
+  // XR のレンダリングフレーム毎に MQTTを呼び出したい
+  const onXRFrameMQTT = (time, frame) => {
+
+    if(props.viewer){
+      frame.session.requestAnimationFrame(onXRFrameMQTT);
+    }else{
+      if (vrModeRef.current){// VR_mode じゃなかったら呼び出さない
+        frame.session.requestAnimationFrame(onXRFrameMQTT);
+        setNow(performance.now()); // VR mode の場合は、通常の AnimationFrame が出ないので、これが必要(loop の代わり)
+      }
+    }
+    
+
+    if ((mqttclient != null) && receive_state) {// 状態を受信していないと、送信しない
+
+      // MQTT 送信
+      const ctl_json = JSON.stringify({
+        time: time,
+        joints: rotateRef.current,
+        trigger: [gripRef.current, buttonaRef.current, buttonbRef.current, gripValueRef.current]
+      });
+
+      publishMQTT(MQTT_CTRL_TOPIC, ctl_json);
+    }
+
+  }
+
+
   React.useEffect(() => {
     if(!registered){
       registered = true
 
       setTimeout(()=>set_rendered(true),1)
-      console.log('set_rendered')
 
       const teihen = joint_pos.j5.x
       const takasa = joint_pos.j3.y + joint_pos.j4.y
@@ -892,6 +1102,7 @@ export default function DynamicHome(props) {
           }else
           if(this.data === 16){
             set_p16_object(this.el.object3D)
+            target_p16_ref.current = this.el.object3D //　これでtarget 位置が参照できる
           }else
           if(this.data === 20){
             set_p20_object(this.el.object3D)
@@ -912,11 +1123,13 @@ export default function DynamicHome(props) {
           }
         }
       });
+//      console.log("Trigger component!")
       AFRAME.registerComponent('vr-controller-right', {
         schema: {type: 'string', default: ''},
         init: function () {
           set_controller_object(this.el.object3D)
           this.el.object3D.rotation.order = order
+          console.log("Set TriggerDown event!")
           this.el.addEventListener('triggerdown', (evt)=>{
             start_rotation = this.el.object3D.rotation.clone()
             const wk_start_pos = new THREE.Vector3().applyMatrix4(this.el.object3D.matrix)
@@ -928,20 +1141,114 @@ export default function DynamicHome(props) {
             set_save_target(undefined)
             set_trigger_on(false)
           });
+        },
+        update: function(){
+          if(this.el.object3D !== controller_object){
+            set_controller_object(this.el.object3D)
+            console.log("Trigger update!")
+          }
         }
       });
-      AFRAME.registerComponent('scene', {
-        schema: {type: 'string', default: ''},
+
+//      console.log("JText component!")
+      // mytext ComponentComponent
+      AFRAME.registerComponent('jtext', {
+        schema: {
+          text: { type: 'string', default: '' },
+          width: { type: 'number', default: 1 },
+          height: { type: 'number', default: 0.12 },
+          color: { type: 'string', default: 'black' },
+          background: { type: 'string', default: 'white' },
+          border: { type: 'string', default: 'black' }
+        },
+
         init: function () {
-          //this.el.enterVR();
+          const el = this.el;
+          const data = this.data;
+
+          // 背景枠（外側）＝ ボーダー
+          /*
+          const border = document.createElement('a-plane');
+          border.setAttribute('width', data.width + 0.02);
+          border.setAttribute('height', data.height + 0.02);
+          border.setAttribute('color', data.border);
+          border.setAttribute('position', '0 0 0');
+            */
+          // 背景（内側）
+          const bg = document.createElement('a-plane');
+          bg.setAttribute('width', data.width);
+          bg.setAttribute('height', data.height);
+          bg.setAttribute('color', data.background);
+          bg.setAttribute('position', '0 0 0.01');
+          bg.setAttribute('opacity', '0.8');
+
+          // テキスト// 初期値しか使わないから！
+          const text = document.createElement('a-entity');
+          console.log("Text:",data.text)
+          text.setAttribute('troika-text', {
+            value: data.text,
+            align: 'center',
+            color: data.color,
+            fontSize: 0.05,
+            maxWidth: data.width * 0.9,
+            font: "BIZUDPGothic-Bold.ttf",
+          });
+          text.setAttribute('position', '0 0 0.01');
+          this.text = text;
+//          el.appendChild(border);
+          el.appendChild(bg);
+          el.appendChild(text);
+        },
+        update: function(oldData){
+          const data = this.data;
+          this.text.setAttribute('troika-text', {
+            value: data.text,
+            align: 'center',
+            color: data.color,
+            fontSize: 0.05,
+            maxWidth: data.width * 0.95,
+            font: "BIZUDPGothic-Bold.ttf",
+          });
+          this.text.setAttribute('position', '0 0 0.01');
+
+            //          console.log("update:",oldData,this.data.text)
+
+        },
+        setText: function(text){
+
+        }
+
+      });
+    
+      console.log("Scene component!")
+      AFRAME.registerComponent('scene', {
+        init: function () {
+          if (props.viewer){// viewer は VR モードじゃなくても requestする
+            window.requestAnimationFrame(onAnimationMQTT);
+          }
           this.el.addEventListener('enter-vr', ()=>{
             vrModeRef.current = true
             console.log('enter-vr')
+            
+            if(!props.viewer){
+              let xrSession = this.el.renderer.xr.getSession();  
+              xrSession.requestAnimationFrame(onXRFrameMQTT);
+            }
+
+            // ここでカメラ位置を変更します
+            set_c_pos_x(0)
+            set_c_pos_y(-0.6)
+            set_c_pos_z(0.90)
+            set_c_deg_x(0)
+            set_c_deg_y(0)
+            set_c_deg_z(0)
+            
           });
           this.el.addEventListener('exit-vr', ()=>{
             vrModeRef.current = false
             console.log('exit-vr')
           });
+          
         }
       });
     }
@@ -958,7 +1265,9 @@ export default function DynamicHome(props) {
     c_pos_x,set_c_pos_x,c_pos_y,set_c_pos_y,c_pos_z,set_c_pos_z,
     c_deg_x,set_c_deg_x,c_deg_y,set_c_deg_y,c_deg_z,set_c_deg_z,
     wrist_rot_x,set_wrist_rot_x,wrist_rot_y,set_wrist_rot_y,wrist_rot_z,set_wrist_rot_z,
-    tool_rotate,set_tool_rotate,normalize180,vr_mode:vrModeRef.current
+    tool_rotate,set_tool_rotate,normalize180,vr_mode:vrModeRef.current,
+    selectedMode, setSelectedMode
+
   }
 
   const robotProps = {
@@ -969,22 +1278,32 @@ export default function DynamicHome(props) {
   if(rendered){
     return (
     <>
-      <a-scene scene>
+      <a-scene scene xr-mode-ui="XRMode: ar"  > 
+      {/* for AFRAME 1.7.0 upper 
+        <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1" position="1 3 0.5" castShadow="true"> </a-light>
+        */}
         <a-entity oculus-touch-controls="hand: right" vr-controller-right visible={`${false}`}></a-entity>
-        <a-plane position="0 0 0" rotation="-90 0 0" width="10" height="10" color={target_error?"#ff7f50":"#7BC8A4"}></a-plane>
-        <Assets/>
+        <a-plane  position="0 0 0" rotation="-90 0 0" width="0.4" height="0.4" color={target_error?"#ff7f50":"#7BC8A4"} opacity="0.5"></a-plane>
+        <Assets viewer={props.viewer} monitor={props.monitor}/>
         <Select_Robot {...robotProps}/>
+        {/*
         <Cursor3dp j_id="20" pos={{x:0,y:0,z:0}} visible={cursor_vis}>
           <Cursor3dp j_id="21" pos={{x:0,y:0,z:p15_16_len}} visible={cursor_vis}></Cursor3dp>
           <Cursor3dp j_id="22" pos={{x:0,y:-joint_pos.j5.y,z:0}} rot={{x:0,y:j1_rotate,z:0}} visible={cursor_vis}></Cursor3dp>
         </Cursor3dp>
+        */}
+
         <a-entity light="type: directional; color: #FFF; intensity: 0.25" position="1 1 1"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.25" position="-1 1 1"></a-entity>
         <a-entity light="type: directional; color: #EEE; intensity: 0.25" position="-1 1 -1"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.25" position="1 1 -1"></a-entity>
         <a-entity light="type: directional; color: #EFE; intensity: 0.05" position="0 -1 0"></a-entity>
         <a-entity id="rig" position={`${c_pos_x} ${c_pos_y} ${c_pos_z}`} rotation={`${c_deg_x} ${c_deg_y} ${c_deg_z}`}>
-          <a-camera id="camera" cursor="rayOrigin: mouse;" position="0 0 0"></a-camera>
+          <a-camera id="camera" cursor="rayOrigin: mouse;" position="0 0 0">
+          {/* camera と一緒に情報提示も動かす             */}
+            <a-entity jtext={`text: ${dsp_message}; color: black; background:rgb(31, 219, 131); border: #000000`} position="0 0.7 -1.4"></a-entity>
+          </a-camera>
         </a-entity>
         <a-sphere position={edit_pos(target)} scale="0.012 0.012 0.012" color={target_error?"red":"yellow"} visible={`${true}`}></a-sphere>
         <a-box position={edit_pos(test_pos)} scale="0.03 0.03 0.03" color="green" visible={`${box_vis}`}></a-box>
@@ -1002,26 +1321,28 @@ export default function DynamicHome(props) {
     );
   }else{
     return(
-      <a-scene>
-        <Assets/>
+      <a-scene xr-mode-ui="XRMode: ar"  >
+       {/* こちらに scene コンポーネントを置くと、なぜか動かない */} 
+        <Assets viewer={props.viewer}/>
       </a-scene>
     )
   }
 }
 
-const Assets = ()=>{
+const Assets = (props)=>{
+  const path = (props.viewer|| props.monitor) ?"../":""
   return (
     <a-assets>
       {/*Model*/}
-      <a-asset-items id="base" src="base_link.gltf" ></a-asset-items>
-      <a-asset-items id="j1" src="link1.gltf" ></a-asset-items>
-      <a-asset-items id="j2" src="link2.gltf" ></a-asset-items>
-      <a-asset-items id="j3" src="link3.gltf" ></a-asset-items>
-      <a-asset-items id="j4" src="link4.gltf" ></a-asset-items>
-      <a-asset-items id="j5" src="link5.gltf" ></a-asset-items>
-      <a-asset-items id="j6" src="link6.gltf" ></a-asset-items>
-      <a-asset-items id="j6_1" src="link7.gltf" ></a-asset-items>
-      <a-asset-items id="j6_2" src="link8.gltf" ></a-asset-items>
+      <a-asset-items id="base" src={`${path}base_link.gltf`} ></a-asset-items>
+      <a-asset-items id="j1" src={`${path}link1.gltf`} ></a-asset-items>
+      <a-asset-items id="j2" src={`${path}link2.gltf`} ></a-asset-items>
+      <a-asset-items id="j3" src={`${path}link3.gltf`} ></a-asset-items>
+      <a-asset-items id="j4" src={`${path}link4.gltf`} ></a-asset-items>
+      <a-asset-items id="j5" src={`${path}link5.gltf`} ></a-asset-items>
+      <a-asset-items id="j6" src={`${path}link6.gltf`} ></a-asset-items>
+      <a-asset-items id="j6_1" src={`${path}link7.gltf`} ></a-asset-items>
+      <a-asset-items id="j6_2" src={`${path}link8.gltf`} ></a-asset-items>
     </a-assets>
   )
 }
@@ -1039,10 +1360,12 @@ const Model = (props)=>{
                   <Model_Tool {...props}/>
                   {/*<a-cylinder color="crimson" height="0.1" radius="0.005" position={edit_pos(joint_pos.j7)}></a-cylinder>*/}
                 </a-entity>
-                <Cursor3dp j_id="15" visible={cursor_vis}/>
+                {/*  <Cursor3dp j_id="15" visible={cursor_vis}/> */}
               </a-entity>
+              {/*
               <Cursor3dp j_id="14" pos={{x:joint_pos.j5.x,y:0,z:0}} visible={cursor_vis}/>
               <Cursor3dp j_id="13" visible={cursor_vis}/>
+              */}
             </a-entity>
             {/*<Cursor3dp j_id="12" visible={cursor_vis}/>*/}
           </a-entity>
