@@ -18,7 +18,13 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"base"
+			"name":"base",
+			"rotation":[
+				0,
+				-1,
+				0,
+				4.371138828673793e-08
+			]
 		}
 	],
 	"materials":[
