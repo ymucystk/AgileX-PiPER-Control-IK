@@ -784,7 +784,7 @@ export default function DynamicHome(props) {
   }
 
   const get_all_rotate = (final_target,wrist_direction,wrist_angle)=>{
-    let j5_minus = false
+    //let j5_minus = false
     let dsp_message = ""
     const p16_pos = new THREE.Vector3(final_target.x,final_target.y,final_target.z)
     const p15_16_offset_pos = get_p21_pos()
@@ -870,14 +870,26 @@ export default function DynamicHome(props) {
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
-    const j5_base = (180 - j5_angle_C)
+    let j5_base = (180 - j5_angle_C)
+    const j3_arm_angle = round((wk_j2_rotate+wk_j3_rotate),10)
+    const judge_wrist_angle = round(wrist_angle,10)
+    if(j3_arm_angle < 90){
+      if(j3_arm_angle > judge_wrist_angle){
+        j5_base = j5_base*-1
+      }
+    }else
+    if(j3_arm_angle > 90){
+      if(j3_arm_angle < judge_wrist_angle){
+        j5_base = j5_base*-1
+      }
+    }
     let wk_j5_rotate = normalize180((j5_base - 90))
-    if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
+    /*if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
       j5_minus = true
     }else{
       j5_minus = false
-    }
+    }*/
 
     const mtx_j5_zero = mtx_j4.clone().multiply(
       new THREE.Matrix4().makeRotationX(toRadian(wk_j5_rotate)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
@@ -897,7 +909,7 @@ export default function DynamicHome(props) {
     const wk_j4_angle_C = toAngle(p16_zero_pos.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
     const j4_base = wk_j4_angle_C * (direction_offset<0?-1:1)
-    let wk_j4_rotate = normalize180((j4_base))*(j5_minus?-1:1)
+    let wk_j4_rotate = normalize180((j4_base))  //*(j5_minus?-1:1)
     /*if(wk_j4_rotate<-110){
       wk_j4_rotate = normalize180((j4_base-(j4_base+70)*2))
     }else
