@@ -784,7 +784,7 @@ export default function DynamicHome(props) {
   }
 
   const get_all_rotate = (final_target,wrist_direction,wrist_angle)=>{
-    //let j5_minus = false
+    let j5_minus = false
     let dsp_message = ""
     const p16_pos = new THREE.Vector3(final_target.x,final_target.y,final_target.z)
     const p15_16_offset_pos = get_p21_pos()
@@ -859,12 +859,11 @@ export default function DynamicHome(props) {
       new THREE.Matrix4().setPosition(0,0,joint_pos.j4.z)
     )
     const j3_pos_wk = new THREE.Vector3().applyMatrix4(mtx_j3_wk)
-    const distance_j4_wk = distance({x:0,y:0,z:joint_pos.j4.z},joint_pos.j4)
 
     const distance_13_16 = (distance(j3_pos_wk,p16_pos))
     let j5_angle_C = 180
-    if((distance_j4_wk + p15_16_len) > distance_13_16){
-      j5_angle_C = degree3(distance_j4_wk,p15_16_len,distance_13_16).angle_C
+    if((joint_pos.j4.y + p15_16_len) > distance_13_16){
+      j5_angle_C = degree3(joint_pos.j4.y,p15_16_len,distance_13_16).angle_C
     }
     if(isNaN(j5_angle_C)){
       dsp_message = "j5_angle_C 指定可能範囲外！"
@@ -873,12 +872,12 @@ export default function DynamicHome(props) {
     }
     const j5_base = (180 - j5_angle_C)
     let wk_j5_rotate = normalize180((j5_base - 90))
-    /*if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
+    if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
       j5_minus = true
     }else{
       j5_minus = false
-    }*/
+    }
 
     const mtx_j5_zero = mtx_j4.clone().multiply(
       new THREE.Matrix4().makeRotationX(toRadian(wk_j5_rotate)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
@@ -898,7 +897,7 @@ export default function DynamicHome(props) {
     const wk_j4_angle_C = toAngle(p16_zero_pos.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
     const j4_base = wk_j4_angle_C * (direction_offset<0?-1:1)
-    let wk_j4_rotate = normalize180((j4_base))  //*(j5_minus?-1:1)
+    let wk_j4_rotate = normalize180((j4_base))*(j5_minus?-1:1)
     /*if(wk_j4_rotate<-110){
       wk_j4_rotate = normalize180((j4_base-(j4_base+70)*2))
     }else
