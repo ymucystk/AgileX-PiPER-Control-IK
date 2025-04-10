@@ -4,7 +4,7 @@ import package_info from '../../package.json' // load version
 
 console.log("Package_Info",package_info.name, package_info.version);
 // package.json からバージョン情報、ソフトウェア名を取得
-const codeType = package_info.name; // software name
+export const codeType = package_info.name; // software name
 const version = package_info.version; // version number
 
 const MQTT_BROKER_URL = "wss://sora2.uclab.jp/mqws"; // For Nagoya-U UCLab Development
