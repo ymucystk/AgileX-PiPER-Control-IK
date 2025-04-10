@@ -41,7 +41,7 @@ const object3D_table = []
 const rotvec_table = [y_vec_base,x_vec_base,x_vec_base,y_vec_base,x_vec_base,z_vec_base]
 let target_move_distance = 0.2
 const target_move_speed = (1000/2)
-let real_target = {x:0.05,y:0.43,z:-0.26}
+let real_target = {x:0,y:0.19647,z:-0.195}
 
 const j1_Correct_value = 180
 const j2_Correct_value = (90-10.784)
@@ -292,7 +292,7 @@ export default function DynamicHome(props) {
   }, [now])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[0] !== undefined) {
+    if (object3D_table[0] !== undefined) {
       if(rotate_table[0].length > 1){
         rotate_table[0].pop()
       }
@@ -301,7 +301,7 @@ export default function DynamicHome(props) {
   }, [j1_rotate])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[1] !== undefined) {
+    if (object3D_table[1] !== undefined) {
       if(rotate_table[1].length > 1){
         rotate_table[1].pop()
       }
@@ -310,7 +310,7 @@ export default function DynamicHome(props) {
   }, [j2_rotate])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[2] !== undefined) {
+    if (object3D_table[2] !== undefined) {
       if(rotate_table[2].length > 1){
         rotate_table[2].pop()
       }
@@ -319,7 +319,7 @@ export default function DynamicHome(props) {
   }, [j3_rotate])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[3] !== undefined) {
+    if (object3D_table[3] !== undefined) {
       if(rotate_table[3].length > 1){
         rotate_table[3].pop()
       }
@@ -328,7 +328,7 @@ export default function DynamicHome(props) {
   }, [j4_rotate])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[4] !== undefined) {
+    if (object3D_table[4] !== undefined) {
       if(rotate_table[4].length > 1){
         rotate_table[4].pop()
       }
@@ -337,7 +337,7 @@ export default function DynamicHome(props) {
   }, [j5_rotate])
 
   React.useEffect(() => {
-    if (rendered && object3D_table[5] !== undefined) {
+    if (object3D_table[5] !== undefined) {
       if(rotate_table[5].length > 1){
         rotate_table[5].pop()
       }
@@ -916,6 +916,8 @@ export default function DynamicHome(props) {
       new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j4_rotate))
     ).multiply(
       new THREE.Quaternion().setFromAxisAngle(x_vec_base,toRadian(wk_j5_rotate))
+    ).multiply(
+      new THREE.Quaternion().setFromAxisAngle(z_vec_base,Math.PI)
     )
     const j5q = get_j5_quaternion()
     const p14_j5_diff = quaternionDifference(baseq,j5q)
