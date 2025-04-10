@@ -859,19 +859,30 @@ export default function DynamicHome(props) {
       new THREE.Matrix4().setPosition(0,0,joint_pos.j4.z)
     )
     const j3_pos_wk = new THREE.Vector3().applyMatrix4(mtx_j3_wk)
-    const distance_j4_wk = distance({x:0,y:0,z:joint_pos.j4.z},joint_pos.j4)
 
     const distance_13_16 = (distance(j3_pos_wk,p16_pos))
     let j5_angle_C = 180
-    if((distance_j4_wk + p15_16_len) > distance_13_16){
-      j5_angle_C = degree3(distance_j4_wk,p15_16_len,distance_13_16).angle_C
+    if((joint_pos.j4.y + p15_16_len) > distance_13_16){
+      j5_angle_C = degree3(joint_pos.j4.y,p15_16_len,distance_13_16).angle_C
     }
     if(isNaN(j5_angle_C)){
       dsp_message = "j5_angle_C 指定可能範囲外！"
       return {j1_rotate:wk_j1_rotate,j2_rotate:wk_j2_rotate,j3_rotate:wk_j3_rotate,
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
-    const j5_base = (180 - j5_angle_C)
+    let j5_base = (180 - j5_angle_C)
+    const j3_arm_angle = round((wk_j2_rotate+wk_j3_rotate),10)
+    const judge_wrist_angle = round(wrist_angle,10)
+    if(j3_arm_angle < 90){
+      if(j3_arm_angle > judge_wrist_angle){
+        j5_base = j5_base*-1
+      }
+    }else
+    if(j3_arm_angle > 90){
+      if(j3_arm_angle < judge_wrist_angle){
+        j5_base = j5_base*-1
+      }
+    }
     let wk_j5_rotate = normalize180((j5_base - 90))
     /*if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
       wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
