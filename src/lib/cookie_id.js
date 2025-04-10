@@ -51,6 +51,9 @@ function getOrSetUUID() {
     if(window.location.pathname.endsWith("/viewer/")) {
         name = name+ "-viewer";
     }
+    if(window.location.pathname.endsWith("/monitor/")) {
+        name = name+ "-monitor";
+    }
     return uuid+"-"+name; // これで tab毎に違うIDとして使える。
 }
 

@@ -7,7 +7,7 @@ import 'aframe-troika-text';
 
 import Controller from './controller.js'
 
-import { connectMQTT, mqttclient,idtopic,subscribeMQTT, publishMQTT } from '../lib/MetaworkMQTT'
+import { connectMQTT, mqttclient,idtopic,subscribeMQTT, publishMQTT, codeType } from '../lib/MetaworkMQTT'
 const MQTT_REQUEST_TOPIC = "mgr/request";
 const MQTT_DEVICE_TOPIC = "dev/"+idtopic;
 const MQTT_CTRL_TOPIC =        "control/"+idtopic; // 自分のIDに制御を送信
@@ -422,7 +422,7 @@ export default function DynamicHome(props) {
         // 制御対象のロボットを探索（表示された時点で実施）
         const requestInfo = {
           devId: idtopic, // 自分のID
-          type: "PiPER-control",  //  PiPERの実機（抽象度高く設定できてもいいかも）
+          type: codeType,  //  コードタイプ（Request でマッチングに利用)
         }
         console.log("Publish request",requestInfo)
         publishMQTT(MQTT_REQUEST_TOPIC, JSON.stringify(requestInfo));
