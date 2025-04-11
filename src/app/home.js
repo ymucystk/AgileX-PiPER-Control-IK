@@ -43,6 +43,8 @@ let target_move_distance = 0.2
 const target_move_speed = (1000/2)
 let real_target = {x:0,y:0.19647,z:-0.195}
 
+const wrist_degree = {direction:0,angle:0}
+
 const j1_Correct_value = 180
 const j2_Correct_value = (90-10.784)
 const j3_Correct_value = (-180+10.784)
@@ -75,8 +77,8 @@ export default function DynamicHome(props) {
   const [j6_rotate,set_j6_rotate] = React.useState(0)
   const [j7_rotate,set_j7_rotate] = React.useState(24) //指用
 
-  const [rotate, set_rotate] = React.useState([0,0,0,0,0,0,0])  //出力用
-  const rotateRef = React.useRef(null); // ref を使って rotate を保持する
+  //const [rotate, set_rotate] = React.useState([0,0,0,0,0,0,0])  //出力用
+  const rotateRef = React.useRef([0,0,0,0,0,0,0]); // ref を使って rotate を保持する
 
   const [input_rotate, set_input_rotate] = React.useState([0,0,0,0,0,0,0])  //入力用
 
@@ -126,7 +128,7 @@ export default function DynamicHome(props) {
   const [wrist_rot_y,set_wrist_rot_y_org] = React.useState(0)
   const [wrist_rot_z,set_wrist_rot_z_org] = React.useState(0)
   const [tool_rotate,set_tool_rotate] = React.useState(0)
-  const [wrist_degree,set_wrist_degree] = React.useState({direction:0,angle:0})
+  //const [wrist_degree,set_wrist_degree] = React.useState({direction:0,angle:0})
   const [dsp_message,set_dsp_message] = React.useState("")
 
   const toolNameList = ["No tool"]
@@ -356,7 +358,7 @@ export default function DynamicHome(props) {
         round(j6_rotate+j6_Correct_value,3),
         round(j7_rotate+j7_Correct_value,3)
       ]
-      set_rotate(new_rotate)
+      //set_rotate(new_rotate)
       rotateRef.current = new_rotate
 //      console.log("New Rotate",new_rotate)
 //    }
@@ -630,7 +632,9 @@ export default function DynamicHome(props) {
     }
 //    console.log("set wrist!", direction, angle, do_target_update)
 
-    set_wrist_degree({direction,angle})
+    //set_wrist_degree({direction,angle})
+    wrist_degree.direction = direction
+    wrist_degree.angle = angle
 
     target15_update(direction,angle)
   }
@@ -679,9 +683,7 @@ export default function DynamicHome(props) {
       const result_target = new THREE.Vector3().applyMatrix4(base_m4)
       const sabun_pos = pos_sub(target,result_target)
       const sabun_distance = sabun_pos.x**2+sabun_pos.y**2+sabun_pos.z**2
-      const wk_euler = new THREE.Euler().setFromRotationMatrix(base_m4,order)
-      const sabun_angle = get_j5_quaternion().angleTo(new THREE.Quaternion().setFromEuler(wk_euler))
-      if(round(sabun_distance) <= 0 && round(sabun_angle,2) <= 0){
+      if(round(sabun_distance) <= 0.1){
         save_target = {...result_target}
         break
       }
@@ -691,7 +693,7 @@ export default function DynamicHome(props) {
         if(save_distance < sabun_distance){
           save_distance_cnt = save_distance_cnt + 1
           if(save_distance_cnt > 1){
-            if(round(sabun_distance,4) <= 0){
+            if(round(sabun_distance,4) <= 0.1){
               result_rotate = {...save_rotate}
               console.log("姿勢制御困難！")
               save_target = {...result_target}
@@ -784,7 +786,6 @@ export default function DynamicHome(props) {
   }
 
   const get_all_rotate = (final_target,wrist_direction,wrist_angle)=>{
-    //let j5_minus = false
     let dsp_message = ""
     const p16_pos = new THREE.Vector3(final_target.x,final_target.y,final_target.z)
     const p15_16_offset_pos = get_p21_pos()
@@ -871,34 +872,9 @@ export default function DynamicHome(props) {
         j4_rotate,j5_rotate,j6_rotate,dsp_message}
     }
     let j5_base = (180 - j5_angle_C)
-    const j3_arm_angle = round((wk_j2_rotate+wk_j3_rotate),10)
-    const judge_wrist_angle = round(wrist_angle,10)
-    if(j3_arm_angle < 90){
-      if(j3_arm_angle > judge_wrist_angle){
-        j5_base = j5_base*-1
-      }
-    }else
-    if(j3_arm_angle > 90){
-      if(j3_arm_angle < judge_wrist_angle){
-        j5_base = j5_base*-1
-      }
-    }
-    let wk_j5_rotate = normalize180((j5_base - 90))
-    /*if(round((wk_j2_rotate+wk_j3_rotate),10)>=round(wrist_angle,10)){
-      wk_j5_rotate = normalize180((wk_j5_rotate-((wk_j5_rotate+90)*2)))
-      j5_minus = true
-    }else{
-      j5_minus = false
-    }*/
 
-    const mtx_j5_zero = mtx_j4.clone().multiply(
-      new THREE.Matrix4().makeRotationX(toRadian(wk_j5_rotate)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
-    ).multiply(
-      new THREE.Matrix4().setPosition(joint_pos.j6.x,joint_pos.j6.y,joint_pos.j6.z)
-    ).multiply(
-      new THREE.Matrix4().setPosition(joint_pos.j7.x,joint_pos.j7.y,p15_16_len)
-    )
-    const p16_zero_pos = new THREE.Vector3().applyMatrix4(mtx_j5_zero)
+    const wk_j5_rotate_p = normalize180((j5_base - 90))
+    const wk_j5_rotate_m = normalize180(((j5_base*-1) - 90))
 
     const j5_tri_wk = calc_side_1(p15_16_len,Math.abs(j5_base))
     const mtx_j5_center = mtx_j4.clone().multiply(
@@ -906,16 +882,38 @@ export default function DynamicHome(props) {
     )
     const j5_center_pos = new THREE.Vector3().applyMatrix4(mtx_j5_center)
 
-    const wk_j4_angle_C = toAngle(p16_zero_pos.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
     const direction_offset = normalize180(wrist_direction - wk_j1_rotate)
-    const j4_base = wk_j4_angle_C * (direction_offset<0?-1:1)
-    let wk_j4_rotate = normalize180((j4_base))  //*(j5_minus?-1:1)
-    /*if(wk_j4_rotate<-110){
-      wk_j4_rotate = normalize180((j4_base-(j4_base+70)*2))
-    }else
-    if(wk_j4_rotate>110){
-      wk_j4_rotate = normalize180((j4_base-(j4_base-70)*2))
-    }*/
+
+    const mtx_j5_zero_p = mtx_j4.clone().multiply(
+      new THREE.Matrix4().makeRotationX(toRadian(wk_j5_rotate_p)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
+    ).multiply(
+      new THREE.Matrix4().setPosition(joint_pos.j6.x,joint_pos.j6.y,joint_pos.j6.z)
+    ).multiply(
+      new THREE.Matrix4().setPosition(joint_pos.j7.x,joint_pos.j7.y,p15_16_len)
+    )
+    const p16_zero_pos_p = new THREE.Vector3().applyMatrix4(mtx_j5_zero_p)
+
+    const wk_j4_angle_C_p = toAngle(p16_zero_pos_p.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
+    const j4_base_p = wk_j4_angle_C_p * (direction_offset<0?-1:1)
+    const wk_j4_rotate_p = normalize180(j4_base_p)
+
+    let wk_j4_rotate = wk_j4_rotate_p
+    let wk_j5_rotate = wk_j5_rotate_p
+    if(Math.abs(wk_j4_rotate_p) > 110){
+      const mtx_j5_zero_m = mtx_j4.clone().multiply(
+        new THREE.Matrix4().makeRotationX(toRadian(wk_j5_rotate_m)).setPosition(joint_pos.j5.x,joint_pos.j5.y,joint_pos.j5.z)
+      ).multiply(
+        new THREE.Matrix4().setPosition(joint_pos.j6.x,joint_pos.j6.y,joint_pos.j6.z)
+      ).multiply(
+        new THREE.Matrix4().setPosition(joint_pos.j7.x,joint_pos.j7.y,p15_16_len)
+      )
+      const p16_zero_pos_m = new THREE.Vector3().applyMatrix4(mtx_j5_zero_m)
+  
+      const wk_j4_angle_C_m = toAngle(p16_zero_pos_m.clone().sub(j5_center_pos).angleTo(p16_pos.clone().sub(j5_center_pos)))
+      const j4_base_m = wk_j4_angle_C_m * (direction_offset<0?1:-1)
+      wk_j4_rotate = normalize180(j4_base_m)
+      wk_j5_rotate = wk_j5_rotate_m
+    }
 
     const baseq = new THREE.Quaternion().multiply(
       new THREE.Quaternion().setFromAxisAngle(y_vec_base,toRadian(wk_j1_rotate))
@@ -1319,6 +1317,7 @@ export default function DynamicHome(props) {
   }
 
   if(rendered){
+    const rotate = rotateRef.current
     return (
     <>
       <a-scene scene xr-mode-ui="XRMode: ar"  > 
@@ -1411,10 +1410,10 @@ const Model = (props)=>{
           <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: -84.216; thetaLength: 185" material="color: #00FFFF" position={edit_pos(joint_pos.j3)} rotation="0 -90 0" visible={`${j3_error}`}></a-entity>
           <a-entity j_id="3" gltf-model="#j3" position={edit_pos(joint_pos.j3)}>
             <a-cylinder position="0 0.05 0" radius="0.005" height="0.1" color="#FF0000" visible={`${j3_error}`}></a-cylinder>
-            <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: -20; thetaLength: 220" material="color: #00FFFF" position="0 0.214 -0.02194" rotation="90 0 0" visible={`${j4_error}`}></a-entity>
-            <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: 160; thetaLength: 220" material="color: #00FFFF" position="0 0.214 -0.02194" rotation="-90 0 0" visible={`${j4_error}`}></a-entity>
+            <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: 160; thetaLength: 220" material="color: #00FFFF" position="0 0.214 -0.02194" rotation="90 0 0" visible={`${j4_error}`}></a-entity>
+            <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: -20; thetaLength: 220" material="color: #00FFFF" position="0 0.214 -0.02194" rotation="-90 0 0" visible={`${j4_error}`}></a-entity>
             <a-entity j_id="4" gltf-model="#j4" position={edit_pos(joint_pos.j4)}>
-              <a-cylinder position="0 -0.036 0.05" rotation="90 0 0" radius="0.005" height="0.1" color="#FF0000" visible={`${j4_error}`}></a-cylinder>
+              <a-cylinder position="0 -0.036 -0.05" rotation="90 0 0" radius="0.005" height="0.1" color="#FF0000" visible={`${j4_error}`}></a-cylinder>
               <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: 10; thetaLength: 160" material="color: #00FFFF" position="0.03 0 0" rotation="0 90 0" visible={`${j5_error}`}></a-entity>
               <a-entity geometry="primitive: circle; radius: 0.1; thetaStart: 10; thetaLength: 160" material="color: #00FFFF" position="-0.03 0 0" rotation="0 -90 0" visible={`${j5_error}`}></a-entity>
               <a-entity j_id="5" gltf-model="#j5" position={edit_pos(joint_pos.j5)}>
