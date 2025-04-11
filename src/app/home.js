@@ -683,7 +683,7 @@ export default function DynamicHome(props) {
       const result_target = new THREE.Vector3().applyMatrix4(base_m4)
       const sabun_pos = pos_sub(target,result_target)
       const sabun_distance = sabun_pos.x**2+sabun_pos.y**2+sabun_pos.z**2
-      if(round(sabun_distance) <= 0.1){
+      if(round(sabun_distance) <= 0.0001){
         save_target = {...result_target}
         break
       }
@@ -693,7 +693,7 @@ export default function DynamicHome(props) {
         if(save_distance < sabun_distance){
           save_distance_cnt = save_distance_cnt + 1
           if(save_distance_cnt > 1){
-            if(round(sabun_distance,4) <= 0.1){
+            if(round(sabun_distance) <= 0.001){
               result_rotate = {...save_rotate}
               console.log("姿勢制御困難！")
               save_target = {...result_target}
