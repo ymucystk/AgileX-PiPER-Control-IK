@@ -148,40 +148,32 @@ export default function DynamicHome(props) {
  */
   const reqIdRef = React.useRef()
 
-  const loop = ()=>{
-    setNow(performance.now());
+  const loop = (timestamp)=>{
+    setNow(timestamp);
     reqIdRef.current = window.requestAnimationFrame(loop)
   }
 
   React.useEffect(() => {
-    loop()
+    loop(performance.now())
     return () => window.cancelAnimationFrame(reqIdRef.current)
   },[])
- 
+
   const set_target = (new_pos)=>{
-    set_target_org((prev_pos)=>{
-      target_move_distance = distance(real_target,new_pos)
-      return new_pos
-    })
+    target_move_distance = distance(real_target,new_pos)
+    set_target_org(new_pos)
   }
 
   const set_wrist_rot_x = (new_rot)=>{
-    set_wrist_rot_x_org((prev_rot)=>{
-      target_move_distance = 0
-      return new_rot
-    })
+    target_move_distance = 0
+    set_wrist_rot_x_org(new_rot)
   }
   const set_wrist_rot_y = (new_rot)=>{
-    set_wrist_rot_y_org((prev_rot)=>{
-      target_move_distance = 0
-      return new_rot
-    })
+    target_move_distance = 0
+    set_wrist_rot_y_org(new_rot)
   }
   const set_wrist_rot_z = (new_rot)=>{
-    set_wrist_rot_z_org((prev_rot)=>{
-      target_move_distance = 0
-      return new_rot
-    })
+    target_move_distance = 0
+    set_wrist_rot_z_org(new_rot)
   }
 
   React.useEffect(() => {
@@ -1066,7 +1058,7 @@ export default function DynamicHome(props) {
     }else{
       if (vrModeRef.current){// VR_mode じゃなかったら呼び出さない
         frame.session.requestAnimationFrame(onXRFrameMQTT);
-        setNow(performance.now()); // VR mode の場合は、通常の AnimationFrame が出ないので、これが必要(loop の代わり)
+        setNow(time); // VR mode の場合は、通常の AnimationFrame が出ないので、これが必要(loop の代わり)
       }
     }
     
@@ -1364,8 +1356,9 @@ export default function DynamicHome(props) {
   }else{
     return(
       <a-scene xr-mode-ui="XRMode: ar"  >
+      {/*<a-scene xr-mode-ui="XRMode: vr"  >*/}
        {/* こちらに scene コンポーネントを置くと、なぜか動かない */} 
-        <Assets viewer={props.viewer}/>
+       <Assets viewer={props.viewer} monitor={props.monitor}/>
       </a-scene>
     )
   }
