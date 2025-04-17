@@ -229,12 +229,6 @@ export default function DynamicHome(props) {
     }
   },[controller_object.rotation.x,controller_object.rotation.y,controller_object.rotation.z])
 
-  React.useEffect(() => {
-    if(rendered){
-      set_do_target_update((prev) => prev + 1) // increment the counter to trigger target_update
-    }
-  },[rendered])
-
   // これで、同じレンダリングタイミングでの複数の target_update を回避
   React.useEffect(()=>{
     target_update();
@@ -258,7 +252,7 @@ export default function DynamicHome(props) {
     for(let i=0; i<rotate_table.length; i=i+1){
       const current_table = rotate_table[i]
       const current_object3D = object3D_table[i]
-      if(current_table.length > 0){
+      if(current_object3D !== undefined && current_table.length > 0){
         const current_data = current_table[0]
         if(current_data.first){
           current_data.first = false
@@ -286,57 +280,45 @@ export default function DynamicHome(props) {
   }, [now])
 
   React.useEffect(() => {
-    if (object3D_table[0] !== undefined) {
-      if(rotate_table[0].length > 1){
-        rotate_table[0].pop()
-      }
-      rotate_table[0].push({rot:j1_rotate,first:true})
+    if(rotate_table[0].length > 1){
+      rotate_table[0].pop()
     }
+    rotate_table[0].push({rot:j1_rotate,first:true})
   }, [j1_rotate])
 
   React.useEffect(() => {
-    if (object3D_table[1] !== undefined) {
-      if(rotate_table[1].length > 1){
-        rotate_table[1].pop()
-      }
-      rotate_table[1].push({rot:j2_rotate,first:true})
+    if(rotate_table[1].length > 1){
+      rotate_table[1].pop()
     }
+    rotate_table[1].push({rot:j2_rotate,first:true})
   }, [j2_rotate])
 
   React.useEffect(() => {
-    if (object3D_table[2] !== undefined) {
-      if(rotate_table[2].length > 1){
-        rotate_table[2].pop()
-      }
-      rotate_table[2].push({rot:j3_rotate,first:true})
+    if(rotate_table[2].length > 1){
+      rotate_table[2].pop()
     }
+    rotate_table[2].push({rot:j3_rotate,first:true})
   }, [j3_rotate])
 
   React.useEffect(() => {
-    if (object3D_table[3] !== undefined) {
-      if(rotate_table[3].length > 1){
-        rotate_table[3].pop()
-      }
-      rotate_table[3].push({rot:j4_rotate,first:true})
+    if(rotate_table[3].length > 1){
+      rotate_table[3].pop()
     }
+    rotate_table[3].push({rot:j4_rotate,first:true})
   }, [j4_rotate])
 
   React.useEffect(() => {
-    if (object3D_table[4] !== undefined) {
-      if(rotate_table[4].length > 1){
-        rotate_table[4].pop()
-      }
-      rotate_table[4].push({rot:j5_rotate,first:true})
+    if(rotate_table[4].length > 1){
+      rotate_table[4].pop()
     }
+    rotate_table[4].push({rot:j5_rotate,first:true})
   }, [j5_rotate])
 
   React.useEffect(() => {
-    if (object3D_table[5] !== undefined) {
-      if(rotate_table[5].length > 1){
-        rotate_table[5].pop()
-      }
-      rotate_table[5].push({rot:j6_rotate,first:true})
+    if(rotate_table[5].length > 1){
+      rotate_table[5].pop()
     }
+    rotate_table[5].push({rot:j6_rotate,first:true})
   }, [j6_rotate])
 
   React.useEffect(() => {
@@ -1355,7 +1337,7 @@ export default function DynamicHome(props) {
     );
   }else{
     return(
-      <a-scene xr-mode-ui="XRMode: ar"  >
+      <a-scene xr-mode-ui="XRMode: vr"  >
       {/*<a-scene xr-mode-ui="XRMode: vr"  >*/}
        {/* こちらに scene コンポーネントを置くと、なぜか動かない */} 
        <Assets viewer={props.viewer} monitor={props.monitor}/>
