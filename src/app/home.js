@@ -61,7 +61,7 @@ let j5_error = false
 
 export default function DynamicHome(props) {
   //const [tick, setTick] = React.useState(0)
-  const [now, setNow] = React.useState(new Date())
+  //const [now, setNow] = React.useState(new Date())
   const [rendered,set_rendered] = React.useState(false)
   const robotNameList = ["Model"]
   const [robotName,set_robotName] = React.useState(robotNameList[0])
@@ -146,7 +146,7 @@ export default function DynamicHome(props) {
   renderCount.current++;
   console.log('Render count:', renderCount.current);
  */
-  const reqIdRef = React.useRef()
+  /*const reqIdRef = React.useRef()
 
   const loop = (timestamp)=>{
     setNow(timestamp);
@@ -156,7 +156,7 @@ export default function DynamicHome(props) {
   React.useEffect(() => {
     loop(performance.now())
     return () => window.cancelAnimationFrame(reqIdRef.current)
-  },[])
+  },[])*/
 
   const set_target = (new_pos)=>{
     target_move_distance = distance(real_target,new_pos)
@@ -245,14 +245,17 @@ export default function DynamicHome(props) {
     set_robotName(get)
   }
 
-  React.useEffect(()=>{
+  //React.useEffect(()=>{
+  const joint_slerp = () => {
     const flg = props.viewer || props.monitor
     // 
 //    console.log("Now!",now,    controller_object.rotation.x)
+    let recursive_flg = false
     for(let i=0; i<rotate_table.length; i=i+1){
       const current_table = rotate_table[i]
       const current_object3D = object3D_table[i]
       if(current_object3D !== undefined && current_table.length > 0){
+        recursive_flg = true
         const current_data = current_table[0]
         if(current_data.first){
           current_data.first = false
@@ -277,7 +280,11 @@ export default function DynamicHome(props) {
         }
       }
     }
-  }, [now])
+    if(recursive_flg){
+      setTimeout(()=>{joint_slerp()},0)
+    }
+  }
+  //}, [now])
 
   React.useEffect(() => {
     if(rotate_table[0].length > 1){
@@ -322,6 +329,7 @@ export default function DynamicHome(props) {
   }, [j6_rotate])
 
   React.useEffect(() => {
+    setTimeout(()=>{joint_slerp()},0)
 //    if(!props.viewer){
       const new_rotate = [
         round(normalize180(j1_rotate+j1_Correct_value),3),
@@ -1040,7 +1048,7 @@ export default function DynamicHome(props) {
     }else{
       if (vrModeRef.current){// VR_mode じゃなかったら呼び出さない
         frame.session.requestAnimationFrame(onXRFrameMQTT);
-        setNow(time); // VR mode の場合は、通常の AnimationFrame が出ないので、これが必要(loop の代わり)
+        //setNow(time); // VR mode の場合は、通常の AnimationFrame が出ないので、これが必要(loop の代わり)
       }
     }
     
