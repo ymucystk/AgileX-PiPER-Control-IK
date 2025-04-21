@@ -1339,8 +1339,7 @@ export default function DynamicHome(props) {
     );
   }else{
     return(
-      <a-scene xr-mode-ui="XRMode: ar"  >
-      {/*<a-scene xr-mode-ui="XRMode: vr"  >*/}
+      <a-scene xr-mode-ui="XRMode: xr"  >
        {/* こちらに scene コンポーネントを置くと、なぜか動かない */} 
        <Assets viewer={props.viewer} monitor={props.monitor}/>
       </a-scene>
