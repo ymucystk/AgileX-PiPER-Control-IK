@@ -270,7 +270,8 @@ export default function DynamicHome(props) {
       }
     }
     if(raw_data > 0){
-      setTimeout(()=>{joint_slerp()},0)
+      requestAnimationFrame(joint_slerp)
+      //setTimeout(()=>{joint_slerp()},0)
     }
   }
   //}, [now])
@@ -318,7 +319,8 @@ export default function DynamicHome(props) {
   }, [j6_rotate])
 
   React.useEffect(() => {
-    setTimeout(()=>{joint_slerp()},0)
+    requestAnimationFrame(joint_slerp)
+    //setTimeout(()=>{joint_slerp()},0)
 //    if(!props.viewer){
       const new_rotate = [
         round(normalize180(j1_rotate+j1_Correct_value),3),
